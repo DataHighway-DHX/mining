@@ -9,7 +9,12 @@ const Lockdrop = artifacts.require("./Lockdrop.sol");
 
 module.exports = async (deployer, network, accounts) => {
   let time;
-  if (network === 'ropsten' || network === 'development') {
+  // Running `
+  if (
+    network === 'ropsten' ||
+    network === 'development' ||
+    network === 'develop' // Network name when running `truffle develop`
+  ) {
     time = await utility.getCurrentTimestamp(web3);
   } else {
     time = MAINNET_LAUNCH_UNIX_TIME;
@@ -17,7 +22,7 @@ module.exports = async (deployer, network, accounts) => {
   await deployer.deploy(Lockdrop, time);
   await deployer.deploy(StandardToken, time);
   await deployer.link(StandardToken, MXCToken);
-  await deployer.deploy(MXCToken, time);
+  await deployer.deploy(MXCToken);
 
   console.log("Deploying Contract on Network: ", network);
   console.log("Deploying Contract on using Accounts: ", accounts);

@@ -1,0 +1,97 @@
+body {
+  // margin-left: 25%;
+  // margin-right: 25%;
+  // margin-top: 10%;
+  font-family: "Open Sans", sans-serif;
+}
+
+label {
+  display: inline-block;
+  width: 200px;
+}
+
+input {
+  width: 80%;
+  padding: 5px;
+  font-size: 16px;
+}
+
+button {
+  font-size: 16px;
+  padding: 5px;
+}
+
+h1, h2 {
+  display: inline-block;
+  vertical-align: middle;
+  margin-top: 0px;
+  margin-bottom: 10px;
+}
+
+h2 {
+  color: #AAA;
+  font-size: 32px;
+}
+
+h3 {
+  font-weight: normal;
+  color: #AAA;
+  font-size: 24px;
+}
+
+.black {
+  color: black;
+}
+
+#balance {
+  color: black;
+}
+
+.hint {
+  color: #666;
+}
+
+.brand-punchline {
+  color: #983636;
+  font-size: 1.5em;
+  font-style: italic;
+}
+
+.logo {
+  width: 50px;
+  margin-bottom: 10px;
+}
+
+.button {
+    background-color: #FDE9DA; /* Green */
+    border: none;
+    color: white;
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+}
+
+.button-transfer {background-color: #FDE9DA;} /* Green */
+
+.container {
+  float: left;
+  width: 80%;
+  padding: 0 20px;
+  overflow: hidden;
+}
+
+@media only screen and (max-width:800px) {
+  /* For tablets: */
+  .container {
+    width: 80%;
+    padding: 0;
+  }
+}
+@media only screen and (max-width:500px) {
+  /* For mobile phones: */
+  .container {
+    width: 80%;
+  }
+}

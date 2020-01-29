@@ -1,0 +1,9 @@
+!/build
+/build/contracts/*
+/build/app.js
+/build/index.html
+!/build/images/*
+node_modules
+yarn-error.log
+db/
+.DS_Store

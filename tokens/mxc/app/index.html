@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MXCToken</title>
+  <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="./app.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div>
+      <!-- <img class="logo" style="vertical-align: middle;" src="./images/logo.png" alt="logo">&nbsp;&nbsp;&nbsp; -->
+      <h1>MXCToken</h1>
+    </div>
+    <div class="brand-punchline"></div>
+    <div>
+      <h3>You have <span class="black"><span id="balance"></span> MXC</span></h3>
+    </div>
+
+    <div>
+      <h1>Transfer</h1>
+      <p><label for="amount">Amount:</label><input type="text" id="amount" placeholder="e.g., 95"></input></p>
+      <p><label for="sender">Sender Address:</label><input type="text" id="sender" placeholder="e.g., 0x93e66d9baea28c17d9fc393b53e3fbdd76899dae"></input></p>
+      <p><label for="receiver">Recipient Address:</label><input type="text" id="receiver" placeholder="e.g., 0x93e66d9baea28c17d9fc393b53e3fbdd76899dae"></input></p>
+      <button id="send" class="button-transfer" onclick="App.sendCoin()">Start Transfer</button>
+    </div>
+    <div>
+      <p><span id="status"></span></p>
+    </div>
+    <div>
+      <p><span class="hint"><strong>Hint:</strong> open the browser developer console to view any errors and warnings.</span></p>
+    </div>
+  <div>
+</body>
+</html>

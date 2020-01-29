@@ -13,7 +13,7 @@
       * [Migrate](#migrate)
   * [Build DApp Front-end](#build-dapp-front-end)
   * [Run DApp Node.js Server](#run-dapp-nodejs-server)
-    * [Example:](#example)
+    * [Example](#example)
   * [Watch](#watch)
   * [Test](#test)
   * [Linter](#linter)

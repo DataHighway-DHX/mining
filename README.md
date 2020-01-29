@@ -107,7 +107,7 @@ Note: If the above results in a time-out, then instead run the following to try 
 
 ```bash
 truffle develop
-truffle(develop)> migrate --reset --network development
+truffle(develop)> migrate --reset
 ```
 
 References:

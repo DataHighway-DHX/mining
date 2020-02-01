@@ -2,6 +2,7 @@ const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
+  mode: 'development',
   entry: './app/javascripts/app.js',
   output: {
     path: path.resolve(__dirname, 'build'),
@@ -33,5 +34,6 @@ module.exports = {
         }
       }
     ]
-  }
+  },
+  devServer: { contentBase: path.join(__dirname, "dist"), compress: true },
 }

@@ -75,7 +75,7 @@ ganache-cli \
 	--account="0x0000000000000000000000000000000000000000000000000000000000000002, 4471238800000000000" \
 	--unlock "0x0000000000000000000000000000000000000000000000000000000000000001" \
 	--unlock "0x0000000000000000000000000000000000000000000000000000000000000002" \
-	--blockTime 0 \
+	--blockTime 3 \
 	--port 8545 \
 	--hostname localhost \
 	--seed 'blah' \
@@ -146,6 +146,8 @@ truffle exec './scripts/checkAllBalances.js’
 
 ```
 $ truffle develop
+truffle(develop)> compile
+truffle(develop)> migrate
 truffle(develop)> exec ./scripts/deployMxc.js
 ```
 		
@@ -164,6 +166,13 @@ Reference
 ```bash
 truffle test
 truffle test ./path/to/test/file.js
+```
+
+OR 
+
+```
+$ truffle develop
+truffle(develop)> test
 ```
 
 ### Linter

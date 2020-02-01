@@ -1,8 +1,11 @@
+// Truffle 5 - https://github.com/trufflesuite/truffle/releases/tag/v5.0.0#user-content-what-s-new-in-truffle-v5-interacting-with-your-contracts-websockets
 // Allows us to use ES6 in our migrations and tests.
 require('@babel/register');
+require('dotenv').config() 
 
 // Default Bulder for Truffle >v3.0
 var DefaultBuilder = require("truffle-default-builder");
+const HDWalletProvider = require("truffle-hdwallet-provider");
 
 module.exports = {
   /*
@@ -68,9 +71,22 @@ module.exports = {
       host: "178.25.19.88",
       port: 80             
     },
+    "rinkeby": {
+      provider: () => new HDWalletProvider(process.env.MNENOMIC, "https://rinkeby.infura.io/v3/" + process.env.INFURA_API_KEY_RINKEBY),
+      network_id: 4,
+      gas: 3000000,
+      gasPrice: 10000000000,
+      websockets: true
+    },
     // Custom private network using default rpc settings
     "staging": {
       network_id: 1337
+    },
+    // Triggered when `truffle develop` is run
+    develop: {
+      accounts: 5,
+      defaultEtherBalance: 500,
+      port: 8545
     },
     "development": {
       accounts: 5,
@@ -81,7 +97,8 @@ module.exports = {
       // `default` - Catch-all
       // `*` - Match any network id
       network_id: "*",
-      networkCheckTimeout: "10000"
+      networkCheckTimeout: "10000",
+      websockets: true
     }
   },
   // Config options for Mocha testing framework

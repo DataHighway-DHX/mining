@@ -51,6 +51,12 @@ npm install
 npm install -g truffle ganache-cli
 ```
 
+Latest beta (see https://github.com/trufflesuite/ganache-cli/releases)
+```bash
+npm uninstall ganache-cli -g
+npm install ganache-cli@beta -g
+```
+
 #### Configure Blockchain
 
 Run Ethereum Client (in separate Terminal tab)
@@ -75,7 +81,7 @@ ganache-cli \
 	--account="0x0000000000000000000000000000000000000000000000000000000000000002, 4471238800000000000" \
 	--unlock "0x0000000000000000000000000000000000000000000000000000000000000001" \
 	--unlock "0x0000000000000000000000000000000000000000000000000000000000000002" \
-	--blockTime 0 \
+	--blockTime 3 \
 	--port 8545 \
 	--hostname localhost \
 	--seed 'blah' \
@@ -99,10 +105,12 @@ ganache-cli \
 ##### Migrate
 
 * Run Migrations Latest - `truffle migrate`
-* Run Migrations Full - `truffle migrate --reset --network development`
+* Run Migrations Full (Rinkeby) - `truffle migrate --reset --network rinkeby`
+* Run Migrations Full (Development) - `truffle migrate --reset --network development`
 * Run Contracts from specific Migration - `truffle migrate -f <number>`
 * Run Migration on specific network called 'live' defined in truffle.js - `truffle migrate --network live`
 
+Note: If you get error `Could not find suitable configuration file.` then you're running the command in the wrong directory.
 Note: If the above results in a time-out, then instead run the following to try and uncover any other errors:
 
 ```bash
@@ -146,8 +154,12 @@ truffle exec './scripts/checkAllBalances.js’
 
 ```
 $ truffle develop
+truffle(develop)> compile
+truffle(develop)> migrate
 truffle(develop)> exec ./scripts/deployMxc.js
 ```
+
+OR `truffle exec ./scripts/deployMxc.js --network development`
 		
 ### Watch
 Watch for changes to contracts, app and config files. Rebuild app upon changes.
@@ -158,12 +170,19 @@ truffle watch
 
 Reference
 * http://truffleframework.com/docs/advanced/commands
-		
+
 ### Test
 
 ```bash
 truffle test
 truffle test ./path/to/test/file.js
+```
+
+OR 
+
+```
+$ truffle develop
+truffle(develop)> test
 ```
 
 ### Linter

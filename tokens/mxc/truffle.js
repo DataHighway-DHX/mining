@@ -84,6 +84,7 @@ module.exports = {
     },
     // Triggered when `truffle develop` is run
     develop: {
+      network_id: 3,
       accounts: 5,
       defaultEtherBalance: 500,
       port: 8545

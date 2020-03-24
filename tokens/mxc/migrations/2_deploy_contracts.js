@@ -1,7 +1,7 @@
 
 // var Owned = artifacts.require("./Owned.sol");
 // var ConvertLib = artifacts.require("./lib/ConvertLib.sol");
-const MAINNET_LAUNCH_UNIX_TIME =  require("../helpers/constants");
+const constants = require("../helpers/constants");
 const utility = require("../helpers/util");
 const StandardToken = artifacts.require("./lib/StandardToken.sol");
 const MXCToken = artifacts.require("./lib/MXCToken.sol");
@@ -11,13 +11,14 @@ module.exports = async (deployer, network, accounts) => {
   let time;
   // Running `
   if (
+    network === 'rinkeby' ||
     network === 'ropsten' ||
     network === 'development' ||
     network === 'develop' // Network name when running `truffle develop`
   ) {
     time = await utility.getCurrentTimestamp(web3);
   } else {
-    time = MAINNET_LAUNCH_UNIX_TIME;
+    time = constants.MAINNET_LAUNCH_UNIX_TIME;
   }
   await deployer.deploy(Lockdrop, time);
   await deployer.deploy(StandardToken, time);

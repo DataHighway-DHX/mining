@@ -51,6 +51,12 @@ npm install
 npm install -g truffle ganache-cli
 ```
 
+Latest beta (see https://github.com/trufflesuite/ganache-cli/releases)
+```bash
+npm uninstall ganache-cli -g
+npm install ganache-cli@beta -g
+```
+
 #### Configure Blockchain
 
 Run Ethereum Client (in separate Terminal tab)
@@ -99,7 +105,8 @@ ganache-cli \
 ##### Migrate
 
 * Run Migrations Latest - `truffle migrate`
-* Run Migrations Full - `truffle migrate --reset --network development`
+* Run Migrations Full (Rinkeby) - `truffle migrate --reset --network rinkeby`
+* Run Migrations Full (Development) - `truffle migrate --reset --network development`
 * Run Contracts from specific Migration - `truffle migrate -f <number>`
 * Run Migration on specific network called 'live' defined in truffle.js - `truffle migrate --network live`
 
@@ -160,7 +167,7 @@ truffle watch
 
 Reference
 * http://truffleframework.com/docs/advanced/commands
-		
+
 ### Test
 
 ```bash

@@ -87,6 +87,7 @@ module.exports = {
       network_id: 3,
       accounts: 5,
       defaultEtherBalance: 500,
+      networkCheckTimeout: "10000",
       port: 8545
     },
     "development": {

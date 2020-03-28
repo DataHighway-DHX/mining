@@ -41,9 +41,10 @@
     "webpack-dev-server": "^3.10.1"
   },
   "dependencies": {
-    "web3": "^1.2.5",
+    "bn.js": "^5.1.1",
     "dotenv": "^8.2.0",
     "truffle-default-builder": "^2.0.0",
-    "truffle-hdwallet-provider": "^1.0.17"
+    "truffle-hdwallet-provider": "^1.0.17",
+    "web3": "^1.2.5"
   }
 }

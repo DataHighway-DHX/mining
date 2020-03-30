@@ -77,11 +77,10 @@ Start Ethereum Blockchain Protocol Node Simulation that will be served on http:/
 
 ```bash
 ganache-cli \
-	--account="0x0000000000000000000000000000000000000000000000000000000000000001, 2471238800000000000" \
-	--account="0x0000000000000000000000000000000000000000000000000000000000000002, 4471238800000000000" \
+	--account="0x0000000000000000000000000000000000000000000000000000000000000001, 50471238800000000000" \
+	--account="0x0000000000000000000000000000000000000000000000000000000000000002, 100471238800000000000" \
 	--unlock "0x0000000000000000000000000000000000000000000000000000000000000001" \
 	--unlock "0x0000000000000000000000000000000000000000000000000000000000000002" \
-	--blockTime 3 \
 	--port 8545 \
 	--hostname localhost \
 	--seed 'blah' \
@@ -224,3 +223,11 @@ web3.eth.blockNumber
 * https://github.com/ethereum/wiki/wiki/JavaScript-API
 * https://www.ethereum.org/cli
 * https://github.com/ltfschoen/benzcoin
+
+### FAQ
+
+* Question: Why do I get the following error when running `truffle test`: `Transaction was not mined within 50 blocks, please make sure your transaction was properly sent. Be aware that it might still be mined!`?
+	* Answer: Running Ganache CLI with `--blockTime 3` mines 1 block every 3 seconds,
+	whereas if the blockTime option is omitted then blocks are mined instantly.
+* Question: Why do I get the following error when running `truffle test`: `sender doesn't have enough funds to send tx. The upfront cost is: 1134439500000000000 and the sender's account only has: 320739879999999999`?
+	* Answer: When running Ganache CLI, provide more ETH to the default accounts (i.e. `--account="0x0000000000000000000000000000000000000000000000000000000000000001, 50471238800000000000" \` provides 50 ETH to that account.) or restart the Ganache CLI

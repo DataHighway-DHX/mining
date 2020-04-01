@@ -1,25 +1,30 @@
 const Promise = require('bluebird');
 const utility = require('../helpers/util');
 const ldHelpers = require('../helpers/lockdropHelper');
+const constants = require('../helpers/constants');
 const { toWei, toBN, padRight } = web3.utils;
 const rlp = require('rlp');
 const keccak = require('keccak');
+const bs58 = require('bs58');
 
 const Lock = artifacts.require("./Lock.sol");
 const Lockdrop = artifacts.require("./Lockdrop.sol");
 
-contract('Lockdrop-1', (accounts) => {
+contract('Lockdrop', (accounts) => {
+  console.log('accounts: ', accounts);
   const SECONDS_IN_DAY = 86400;
   const THREE_MONTHS = 0;
   const SIX_MONTHS = 1;
   const TWELVE_MONTHS = 2;
 
   let lockdrop;
+  let lockdropAsArray;
 
   beforeEach(async function() {
     let time = await utility.getCurrentTimestamp(web3);
     try {
       lockdrop = await Lockdrop.new(time);
+      lockdropAsArray = Array(lockdrop);
     } catch(err) {
       console.log('Lockdrop error: ', err);
     }
@@ -145,12 +150,13 @@ contract('Lockdrop-1', (accounts) => {
     }));
 
     const totalAllocation = '5000000000000000000000000000';
-    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop);
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdropAsArray);
     let { validatingLocks, locks, totalEffectiveETHLocked } = allocation;
-    const signalAllocation = await ldHelpers.calculateEffectiveSignals(web3, lockdrop);
-    let { signals, totalEffectiveETHSignaled } = signalAllocation;
+    const signalAllocation = await ldHelpers.calculateEffectiveSignals(web3, lockdropAsArray);
+    let { signals, totalEffectiveETHSignaled, genLocks } = signalAllocation;
+    console.log('signals, totalEffectiveETHSignaled: ', signals, totalEffectiveETHSignaled)
     const totalEffectiveETH = totalEffectiveETHLocked.add(totalEffectiveETHSignaled);
-    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, totalAllocation, totalEffectiveETH);
+    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, genLocks, totalAllocation, totalEffectiveETH);
 
     const bal = toBN(totalAllocation).div(toBN(accounts.length)).toString();
     json.balances.forEach(elt => {
@@ -167,12 +173,12 @@ contract('Lockdrop-1', (accounts) => {
     }));
 
     const totalAllocation = '5000000000000000000000000000';
-    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop);
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdropAsArray);
     let { validatingLocks, locks, totalEffectiveETHLocked } = allocation;
-    const signalAllocation = await ldHelpers.calculateEffectiveSignals(web3, lockdrop);
-    let { signals, totalEffectiveETHSignaled } = signalAllocation;
+    const signalAllocation = await ldHelpers.calculateEffectiveSignals(web3, lockdropAsArray);
+    let { signals, totalEffectiveETHSignaled, genLocks } = signalAllocation;
     const totalEffectiveETH = totalEffectiveETHLocked.add(totalEffectiveETHSignaled);
-    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, totalAllocation, totalEffectiveETH);
+    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, genLocks, totalAllocation, totalEffectiveETH);
 
     const bal = toBN(totalAllocation).div(toBN(accounts.length)).toString();
     json.balances.forEach(elt => {
@@ -189,12 +195,12 @@ contract('Lockdrop-1', (accounts) => {
     }));
 
     const totalAllocation = '5000000000000000000000000000';
-    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop);
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdropAsArray);
     let { validatingLocks, locks, totalEffectiveETHLocked } = allocation;
-    const signalAllocation = await ldHelpers.calculateEffectiveSignals(web3, lockdrop);
-    let { signals, totalEffectiveETHSignaled } = signalAllocation;
+    const signalAllocation = await ldHelpers.calculateEffectiveSignals(web3, lockdropAsArray);
+    let { signals, totalEffectiveETHSignaled, genLocks } = signalAllocation;
     const totalEffectiveETH = totalEffectiveETHLocked.add(totalEffectiveETHSignaled);
-    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, totalAllocation, totalEffectiveETH);
+    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, genLocks, totalAllocation, totalEffectiveETH);
 
     const bal = toBN(totalAllocation).div(toBN(accounts.length)).toString();
     json.balances.forEach(elt => {
@@ -216,7 +222,7 @@ contract('Lockdrop-1', (accounts) => {
     });
 
     const totalAllocation = '5000000000000000000000000000';
-    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop);
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdropAsArray);
     let { validatingLocks, locks, totalEffectiveETHLocked } = allocation;
     assert.equal(Object.keys(validatingLocks).length, 1);
     assert.equal(Object.keys(locks).length, 1);
@@ -231,12 +237,12 @@ contract('Lockdrop-1', (accounts) => {
     }));
 
     const totalAllocation = '5000000000000000000000000000';
-    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop);
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdropAsArray);
     let { validatingLocks, locks, totalEffectiveETHLocked } = allocation;
-    const signalAllocation = await ldHelpers.calculateEffectiveSignals(web3, lockdrop);
-    let { signals, totalEffectiveETHSignaled } = signalAllocation;
+    const signalAllocation = await ldHelpers.calculateEffectiveSignals(web3, lockdropAsArray);
+    let { signals, totalEffectiveETHSignaled, genLocks } = signalAllocation;
     const totalEffectiveETH = totalEffectiveETHLocked.add(totalEffectiveETHSignaled);
-    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, totalAllocation, totalEffectiveETH);
+    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, genLocks, totalAllocation, totalEffectiveETH);
     let validators = ldHelpers.selectEdgewareValidators(validatingLocks, totalAllocation, totalEffectiveETH, 10);
     assert(validators.length < 10);
     assert.ok(json.hasOwnProperty('balances'));
@@ -267,5 +273,64 @@ contract('Lockdrop-1', (accounts) => {
     let time = await utility.getCurrentTimestamp(web3);
     let tempLd = await Lockdrop.new(time);
     assert.equal(web3.utils.toBN(tempLd.address).toString(), web3.utils.toBN(contractAddr).toString());
+  });
+
+  it('should ensure base58 encodings are valid to submit', async function () {
+    await Promise.all(accounts.map(async (a, inx) => {
+      return await lockdrop.lock(TWELVE_MONTHS, `0x${bs58.decode(fixtures[inx].base58Address).toString('hex')}`, (Math.random() > 0.5) ? true : false, {
+        from: a,
+        value: web3.utils.toWei(`${inx + 1}`, 'ether'),
+      });
+    }));
+
+    await Promise.all(accounts.map(async (a, inx) => {
+      return await lockdrop.lock(TWELVE_MONTHS, `0x${bs58.decode(fixtures[inx].base58Address).toString('hex')}`, (Math.random() > 0.5) ? true : false, {
+        from: a,
+        value: web3.utils.toWei(`${inx + 1}`, 'ether'),
+      });
+    }));
+
+    const totalAllocation = '5000000000000000000000000';
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop);
+    let { validatingLocks, locks, totalETHLocked } = allocation;
+    // console.log(validatingLocks, locks, web3.utils.fromWei(totalETHLocked.toString(), 'ether'));
+    const signalAllocation = await ldHelpers.calculateEffectiveSignals(web3, lockdrop);
+    let { signals, totalETHSignaled } = signalAllocation;
+    // console.log(signals, web3.utils.fromWei(totalETHSignaled.toString(), 'ether'));
+    const totalETH = totalETHLocked.add(totalETHSignaled);
+
+    let totalETHLockedInETH = web3.utils.fromWei(totalETHLocked.toString(), 'ether');
+    let totalETHSignaledInETH = web3.utils.fromWei(totalETHSignaled.toString(), 'ether');
+    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, totalAllocation, totalETH);
+    let validators = ldHelpers.selectEdgewareValidators(validatingLocks, totalAllocation, totalETH, 4);
+
+    let sum = toBN(0);
+    json.balances.forEach((elt, inx) => {
+      assert.equal(elt[0], fixtures[inx].base58Address);
+      sum = sum.add(toBN(elt[1]));
+    });
+
+    assert.ok(sum < toBN(totalAllocation).add(toBN(10)) || sum > toBN(totalAllocation).sub(toBN(10)))
+  });
+
+  it('should not break the first lock of the lockdrop', async function () {
+    const sender = lockdrop.address;
+    const nonce = (await web3.eth.getTransactionCount(sender));
+    const nonceHex = `0x${nonce.toString(16)}`;
+    const input = [ sender, nonce ];
+    const rlpEncoded = rlp.encode(input);
+    const contractAddressLong = keccak('keccak256').update(rlpEncoded).digest('hex');
+    const contractAddr = `0x${contractAddressLong.substring(24)}`;
+
+    await web3.eth.sendTransaction({
+      from: accounts[0],
+      to: contractAddr,
+      value: web3.utils.toWei('1', 'ether'),
+    });
+
+    await lockdrop.lock(THREE_MONTHS, accounts[1], true, {
+      from: accounts[1],
+      value: 1,
+    });
   });
 });

@@ -1,9 +1,9 @@
 const Promise = require('bluebird');
 const keyring = require('@polkadot/keyring');
 const { toBN, fromWei, hexToNumber } = require('web3').utils;
-const bs58 = require('bs58');
 const schedule = require('./schedule');
 const generalizedLocks = require('./generalizedLocks');
+const constants = require("./constants");
 
 function getEffectiveValue(ethAmount, term, lockTime, lockStart, totalETH) {
   // multiplicative bonus starts at 100 / 100 = 1
@@ -62,14 +62,13 @@ const getTotalSignaledBalance = async (web3, lockdropContract) => {
 };
 
 const calculateEffectiveLocks = async (lockdropContracts) => {
-  console.log('lockdropContracts: ', lockdropContracts)
   let totalETHLocked = toBN(0);
   let totalEffectiveETHLocked = toBN(0);
   const locks = {};
   const validatingLocks = {};
 
   let lockEvents = []
-  for (index in lockdropContracts) {
+  for (let index in lockdropContracts) {
     let events = await lockdropContracts[index].getPastEvents('Locked', {
       fromBlock: 0,
       toBlock: 'latest',
@@ -90,9 +89,14 @@ const calculateEffectiveLocks = async (lockdropContracts) => {
     // allocate locks to first key if multiple submitted or malformed larger key submitted
     // NOTE: if key was less than length of a correct submission (66 chars), funds are considered lost
     let keys = [data.edgewareAddr];
-    if (data.edgewareAddr.length >= 66) {
-      keys = data.edgewareAddr.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
-    }
+    // FIXME [calculateEffectiveLocks-1] - why are we reducing the length of the decoded public key (hex) here
+    // (that we originally decoded in lockdrop.js using `bs58.decode ...`) by removing 6 characters from the end?
+    // because if we do this we can't encode it back again in function `getEdgewareBalanceObjects` with `bs58.encode ...`
+    // and it causes the assertion in the test 'should ensure base58 encodings are valid to submit' to fail.
+    // Also why are we encoding with `bs58.encode ...` but then decoding with Polkadot.js's `keyring.encodeAddress(key)`
+    // if (data.edgewareAddr.length >= 66) {
+    //   keys = data.edgewareAddr.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
+    // }
     let value = getEffectiveValue(data.eth, data.term, data.time, lockdropStartTime, totalETHLocked);
     totalETHLocked = totalETHLocked.add(toBN(data.eth));
     totalEffectiveETHLocked = totalEffectiveETHLocked.add(value);
@@ -134,13 +138,15 @@ const calculateEffectiveLocks = async (lockdropContracts) => {
   return { validatingLocks, locks, totalETHLocked, totalEffectiveETHLocked };
 };
 
-const calculateEffectiveSignals = async (web3, lockdropContracts, blockNumber=8461046) => {
+const calculateEffectiveSignals = async (
+  web3, lockdropContracts, blockNumber=constants.CALCULATE_SIGNALS_FROM_BLOCK
+) => {
   let totalETHSignaled = toBN(0);
   let totalEffectiveETHSignaled = toBN(0);
   let signals = {};
   let seenContracts = {};
   let signalEvents = [];
-  for (index in lockdropContracts) {
+  for (let index in lockdropContracts) {
     let events = await lockdropContracts[index].getPastEvents('Signaled', {
       fromBlock: 0,
       toBlock: 'latest',
@@ -183,9 +189,10 @@ const calculateEffectiveSignals = async (web3, lockdropContracts, blockNumber=84
       // allocate signals to first key if multiple submitted or malformed larger key submitted
       // NOTE: if key was less than length of a correct submission (66 chars), funds are considered lost
       let keys = [data.edgewareAddr];
-      if (data.edgewareAddr.length >= 66) {
-        keys = data.edgewareAddr.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
-      }
+      // FIXME - see other "FIXME [calculateEffectiveLocks-1]" for locks in this file 
+      // if (data.edgewareAddr.length >= 66) {
+      //   keys = data.edgewareAddr.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
+      // }
 
       // Treat generalized locks as 3 month locks
       if (generalizedLocks.lockedContractAddresses.includes(data.contractAddr)) {
@@ -264,20 +271,36 @@ const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffecti
 };
 
 const getEdgewareBalanceObjects = (locks, signals, genLocks, totalAllocation, totalEffectiveETH, existentialBalance=100000000000000) => {
+  console.log('locks: ', locks);
   let balances = [];
   let vesting = [];
+  let key = "";
+  let strippedKey = "";
   // handle locks separately than signals at first, then we'll scan over all
   // entries and ensure that there are only unique entries in the collections.
-  for (var key in locks) {
+  for (const currentKey of Object.keys(locks)) {
+    key = currentKey;
+    console.log('key: ', key);
+    strippedKey = key.slice(2);
+    console.log('strippedKey: ', strippedKey);
+    // const encoded = keyring.encodeAddress(key);
+    // console.log('encoded key with keyring', encoded);
+    // Example:
+    //
+    // $ node
+    // > const bs58 = require('bs58');
+    // > bytes = Buffer.from('2afa34ee0f034817963d83845920938c1d23bd7f7d146f588ff0e0f608fd3b6d4ec0be', 'hex');
+    // <Buffer 2a fa 34 ee 0f 03 48 17 96 3d 83 84 59 20 93 8c 1d 23 bd 7f 7d 14 6f 58 8f f0 e0 f6 08 fd 3b 6d 4e c0 be>
+    // > bs58.encode(bytes)
+    // '5HimYxXdszMgAbPQD49kLbgaBb274ubQpRNDJmZD4fA7KrJq'
     try {
-      const encoded = keyring.encodeAddress(key);
       balances.push([
-        key.slice(2),
+        strippedKey,
         mulByAllocationFraction(locks[key].effectiveValue, totalAllocation, totalEffectiveETH).toString(),
       ]);
       // add the vesting account to make their entire balance liquid at launch
       vesting.push([
-        key.slice(2),
+        strippedKey,
         5256000,
         1,
         mulByAllocationFraction(toBN(locks[key].effectiveValue), totalAllocation, totalEffectiveETH).toString(),
@@ -288,18 +311,20 @@ const getEdgewareBalanceObjects = (locks, signals, genLocks, totalAllocation, to
     }
   }
   // handle signal entries
-  for (var key in signals) {
+  for (const currentKey in signals) {
+    key = currentKey;
+    strippedKey = key.slice(2);
     try {
       // the liquid amount of the vesting is 25% of signaled value
       const vestingValue = toBN(signals[key].effectiveValue).mul(toBN(25)).div(toBN(100));
       // create new balance record for the signaler
       balances.push([
-        key.slice(2),
+        strippedKey,
         mulByAllocationFraction(toBN(signals[key].effectiveValue), totalAllocation, totalEffectiveETH).toString(),
       ]);
       // create vesting record for 25% liquid signal amount at launch
       vesting.push([
-        key.slice(2),
+        strippedKey,
         5256000,
         1,
         mulByAllocationFraction(vestingValue, totalAllocation, totalEffectiveETH).toString(),
@@ -310,16 +335,17 @@ const getEdgewareBalanceObjects = (locks, signals, genLocks, totalAllocation, to
     }
   }
 
-  for (var key in genLocks) {
+  for (const currentKey in genLocks) {
+    key = currentKey;
+    strippedKey = key.slice(2);
     try {
-      const encoded = keyring.encodeAddress(key);
       balances.push([
-        key.slice(2),
+        strippedKey,
         mulByAllocationFraction(toBN(genLocks[key]), totalAllocation, totalEffectiveETH).toString(),
       ]);
       // add the vesting account to make their entire balance liquid at launch
       vesting.push([
-        key.slice(2),
+        strippedKey,
         5256000,
         1,
         mulByAllocationFraction(toBN(genLocks[key]), totalAllocation, totalEffectiveETH).toString(),

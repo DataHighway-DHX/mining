@@ -99,12 +99,12 @@ module.exports = function(callback) {
     // var account_two = web3.eth.accounts.wallet[1].address;
 
     // Show Account Balances
-    const aliceBalance = utility.getAccountBalance(web3, accounts[0]);
+    const aliceBalance = utility.getBalance(web3, accounts[0]);
     aliceBalance.then(function(result) {
       console.log('Alice balance:', result);
     })
 
-    const bobBalance = utility.getAccountBalance(web3, accounts[1]);
+    const bobBalance = utility.getBalance(web3, accounts[1]);
     bobBalance.then(function(result) {
       console.log('Bob balance:', result);
     })

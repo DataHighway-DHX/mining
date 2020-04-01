@@ -41,6 +41,7 @@
     "webpack-dev-server": "^3.10.1"
   },
   "dependencies": {
+    "@polkadot/util-crypto": "^2.7.1",
     "bn.js": "^5.1.1",
     "dotenv": "^8.2.0",
     "truffle-default-builder": "^2.0.0",

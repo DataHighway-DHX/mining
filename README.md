@@ -75,19 +75,22 @@ mkdir db && mkdir db/chain_database
 
 Start Ethereum Blockchain Protocol Node Simulation that will be served on http://localhost:8545
 
+Note:
+* `0xce31EeD26ff009f1F5e38408571ea174c5d54f20` is Ethereum address of seed `0x209c205f333b5a65cc428589a51bd9f2621e2fc01de1b02dbf8c0f0b68e4974e`
+* `0xe66628e37eFE36098c148d2a3B970074999E95C6` is Ethereum address of seed `0x0edb559026c8f779be17b4c9d8e4dfc14bead6592241de4d6612f77769327f7f`
+* These keys are defined in ./helpers/constants.js
 ```bash
 ganache-cli \
-	--account="0x0000000000000000000000000000000000000000000000000000000000000001, 2471238800000000000" \
-	--account="0x0000000000000000000000000000000000000000000000000000000000000002, 4471238800000000000" \
-	--unlock "0x0000000000000000000000000000000000000000000000000000000000000001" \
-	--unlock "0x0000000000000000000000000000000000000000000000000000000000000002" \
-	--blockTime 3 \
+	--account="0x209c205f333b5a65cc428589a51bd9f2621e2fc01de1b02dbf8c0f0b68e4974e, 50471238800000000000" \
+	--account="0x0edb559026c8f779be17b4c9d8e4dfc14bead6592241de4d6612f77769327f7f, 100471238800000000000" \
+	--unlock "0x209c205f333b5a65cc428589a51bd9f2621e2fc01de1b02dbf8c0f0b68e4974e" \
+	--unlock "0x0edb559026c8f779be17b4c9d8e4dfc14bead6592241de4d6612f77769327f7f" \
 	--port 8545 \
 	--hostname localhost \
-	--seed 'blah' \
+	--seed '0x209c205f333b5a65cc428589a51bd9f2621e2fc01de1b02dbf8c0f0b68e4974e' \
 	--debug true \
 	--mem true \
-	--mnemonic 'something' \
+	--mnemonic 'end sleep vote expire arctic magic crack wrap toddler lizard acoustic owner' \
 	--db './db/chain_database' \
 	--verbose \
 	--networkId=3 \
@@ -210,8 +213,8 @@ web3
 web3.eth.accounts
 
 i.e. 
-	[ '0x7e5f4552091a69125d5dfcb7b8c2659029395bdf',
-		'0x2b5ad5c4795c026514f8317c7a215e218dccd6cf' ]
+	[ '0xce31EeD26ff009f1F5e38408571ea174c5d54f20',
+		'0xe66628e37eFE36098c148d2a3B970074999E95C6' ]
 
 web3.eth.blockNumber
 ```
@@ -224,3 +227,11 @@ web3.eth.blockNumber
 * https://github.com/ethereum/wiki/wiki/JavaScript-API
 * https://www.ethereum.org/cli
 * https://github.com/ltfschoen/benzcoin
+
+### FAQ
+
+* Question: Why do I get the following error when running `truffle test`: `Transaction was not mined within 50 blocks, please make sure your transaction was properly sent. Be aware that it might still be mined!`?
+	* Answer: Running Ganache CLI with `--blockTime 3` mines 1 block every 3 seconds,
+	whereas if the blockTime option is omitted then blocks are mined instantly.
+* Question: Why do I get the following error when running `truffle test`: `sender doesn't have enough funds to send tx. The upfront cost is: 1134439500000000000 and the sender's account only has: 320739879999999999`?
+	* Answer: When running Ganache CLI, provide more ETH to the default accounts (i.e. `--account="0x0000000000000000000000000000000000000000000000000000000000000001, 50471238800000000000" \` provides 50 ETH to that account.) or restart the Ganache CLI

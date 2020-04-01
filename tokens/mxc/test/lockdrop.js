@@ -276,37 +276,44 @@ contract('Lockdrop', (accounts) => {
   });
 
   it('should ensure base58 encodings are valid to submit', async function () {
+    // Add locks using default accounts
     await Promise.all(accounts.map(async (a, inx) => {
-      return await lockdrop.lock(TWELVE_MONTHS, `0x${bs58.decode(fixtures[inx].base58Address).toString('hex')}`, (Math.random() > 0.5) ? true : false, {
+      return await lockdrop.lock(TWELVE_MONTHS, `0x${bs58.decode(constants.FIXTURES[inx].base58Address).toString('hex')}`, (Math.random() > 0.5) ? true : false, {
         from: a,
         value: web3.utils.toWei(`${inx + 1}`, 'ether'),
       });
     }));
 
     await Promise.all(accounts.map(async (a, inx) => {
-      return await lockdrop.lock(TWELVE_MONTHS, `0x${bs58.decode(fixtures[inx].base58Address).toString('hex')}`, (Math.random() > 0.5) ? true : false, {
+      return await lockdrop.lock(TWELVE_MONTHS, `0x${bs58.decode(constants.FIXTURES[inx].base58Address).toString('hex')}`, (Math.random() > 0.5) ? true : false, {
         from: a,
         value: web3.utils.toWei(`${inx + 1}`, 'ether'),
       });
     }));
 
     const totalAllocation = '5000000000000000000000000';
-    const allocation = await ldHelpers.calculateEffectiveLocks(lockdrop);
-    let { validatingLocks, locks, totalETHLocked } = allocation;
-    // console.log(validatingLocks, locks, web3.utils.fromWei(totalETHLocked.toString(), 'ether'));
-    const signalAllocation = await ldHelpers.calculateEffectiveSignals(web3, lockdrop);
-    let { signals, totalETHSignaled } = signalAllocation;
-    // console.log(signals, web3.utils.fromWei(totalETHSignaled.toString(), 'ether'));
-    const totalETH = totalETHLocked.add(totalETHSignaled);
+    const allocation = await ldHelpers.calculateEffectiveLocks(lockdropAsArray);
+    let { validatingLocks, locks, totalEffectiveETHLocked } = allocation;
+    const signalAllocation = await ldHelpers.calculateEffectiveSignals(web3, lockdropAsArray);
+    let { signals, totalEffectiveETHSignaled, genLocks } = signalAllocation;
+    const totalEffectiveETH = totalEffectiveETHLocked.add(totalEffectiveETHSignaled);
 
-    let totalETHLockedInETH = web3.utils.fromWei(totalETHLocked.toString(), 'ether');
-    let totalETHSignaledInETH = web3.utils.fromWei(totalETHSignaled.toString(), 'ether');
-    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, totalAllocation, totalETH);
-    let validators = ldHelpers.selectEdgewareValidators(validatingLocks, totalAllocation, totalETH, 4);
+    let totalETHLockedInETH = web3.utils.fromWei(totalEffectiveETHLocked.toString(), 'ether');
+    console.log('Validating Locks in ETH: ', totalETHLockedInETH);
+    console.log('Locks in ETH: ', totalETHLockedInETH);
+    let totalETHSignaledInETH = web3.utils.fromWei(totalEffectiveETHSignaled.toString(), 'ether');
+    console.log('Signalled in ETH: ', totalETHSignaledInETH);
+    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, genLocks, totalAllocation, totalEffectiveETH);
+    let validators = ldHelpers.selectEdgewareValidators(validatingLocks, totalAllocation, totalEffectiveETH, 4);
 
     let sum = toBN(0);
+    console.log('json: ', json);
     json.balances.forEach((elt, inx) => {
-      assert.equal(elt[0], fixtures[inx].base58Address);
+      const strippedKey = elt[0];
+      const bytes = Buffer.from(strippedKey, 'hex');
+      const encodedKey = bs58.encode(bytes);
+      // FIXME - why didn't Edgeware originally re-encode the key using bs58 like we have done here prior to the assertion?
+      assert.equal(encodedKey, constants.FIXTURES[inx].base58Address);
       sum = sum.add(toBN(elt[1]));
     });
 

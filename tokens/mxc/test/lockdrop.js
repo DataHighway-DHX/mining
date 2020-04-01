@@ -7,7 +7,8 @@ const rlp = require('rlp');
 const keccak = require('keccak');
 const bs58 = require('bs58');
 const keyring = require('@polkadot/keyring');
-const { decodeAddress } = require('@polkadot/util-crypto');
+const { decodeAddress, encodeAddress } = require('@polkadot/util-crypto');
+const { stringToU8a, u8aToHex } = require('@polkadot/util');
 
 const Lock = artifacts.require("./Lock.sol");
 const Lockdrop = artifacts.require("./Lockdrop.sol");
@@ -278,16 +279,20 @@ contract('Lockdrop', (accounts) => {
   });
 
   it('should ensure base58 encodings are valid to submit', async function () {
+    let bytes, decodedKey, encodedKey = '';
     // Add locks using default accounts
     await Promise.all(accounts.map(async (a, inx) => {
-      return await lockdrop.lock(TWELVE_MONTHS, `0x${decodeAddress(constants.FIXTURES[inx].base58Address, true).toString('hex')}`, (Math.random() > 0.5) ? true : false, {
+      decodedKey = u8aToHex(decodeAddress(constants.FIXTURES[inx].base58Address));
+      console.log('decodedKey', decodedKey)
+      return await lockdrop.lock(TWELVE_MONTHS, `${decodedKey}`, (Math.random() > 0.5) ? true : false, {
         from: a,
         value: web3.utils.toWei(`${inx + 1}`, 'ether'),
       });
     }));
 
     await Promise.all(accounts.map(async (a, inx) => {
-      return await lockdrop.lock(TWELVE_MONTHS, `0x${decodeAddress(constants.FIXTURES[inx].base58Address, true).toString('hex')}`, (Math.random() > 0.5) ? true : false, {
+      decodedKey = u8aToHex(decodeAddress(constants.FIXTURES[inx].base58Address));
+      return await lockdrop.lock(TWELVE_MONTHS, `${decodedKey}`, (Math.random() > 0.5) ? true : false, {
         from: a,
         value: web3.utils.toWei(`${inx + 1}`, 'ether'),
       });
@@ -310,12 +315,12 @@ contract('Lockdrop', (accounts) => {
 
     let sum = toBN(0);
     console.log('json: ', json);
-    let key, bytes, encodedKey = '';
     json.balances.forEach((elt, inx) => {
-      key = elt[0];
-      bytes = Buffer.from(key, 'hex');
-      encodedKey = keyring.encodeAddress(bytes);
-      // FIXME - why didn't Edgeware originally re-encode the key using bs58 like we have done here prior to the assertion?
+      decodedKey = elt[0];
+      bytes = Buffer.from(decodedKey, 'hex');
+      // Note: Decode/encode either using bs58 library or Polkadot.js util-crypto and util libraries
+      // e.g. https://gist.github.com/ltfschoen/f98e5af52dd5ef60e87e87f143d70625
+      encodedKey = encodeAddress(bytes);
       assert.equal(encodedKey, constants.FIXTURES[inx].base58Address);
       sum = sum.add(toBN(elt[1]));
     });

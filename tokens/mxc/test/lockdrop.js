@@ -6,6 +6,8 @@ const { toWei, toBN, padRight } = web3.utils;
 const rlp = require('rlp');
 const keccak = require('keccak');
 const bs58 = require('bs58');
+const keyring = require('@polkadot/keyring');
+const { decodeAddress } = require('@polkadot/util-crypto');
 
 const Lock = artifacts.require("./Lock.sol");
 const Lockdrop = artifacts.require("./Lockdrop.sol");
@@ -278,14 +280,14 @@ contract('Lockdrop', (accounts) => {
   it('should ensure base58 encodings are valid to submit', async function () {
     // Add locks using default accounts
     await Promise.all(accounts.map(async (a, inx) => {
-      return await lockdrop.lock(TWELVE_MONTHS, `0x${bs58.decode(constants.FIXTURES[inx].base58Address).toString('hex')}`, (Math.random() > 0.5) ? true : false, {
+      return await lockdrop.lock(TWELVE_MONTHS, `0x${decodeAddress(constants.FIXTURES[inx].base58Address, true).toString('hex')}`, (Math.random() > 0.5) ? true : false, {
         from: a,
         value: web3.utils.toWei(`${inx + 1}`, 'ether'),
       });
     }));
 
     await Promise.all(accounts.map(async (a, inx) => {
-      return await lockdrop.lock(TWELVE_MONTHS, `0x${bs58.decode(constants.FIXTURES[inx].base58Address).toString('hex')}`, (Math.random() > 0.5) ? true : false, {
+      return await lockdrop.lock(TWELVE_MONTHS, `0x${decodeAddress(constants.FIXTURES[inx].base58Address, true).toString('hex')}`, (Math.random() > 0.5) ? true : false, {
         from: a,
         value: web3.utils.toWei(`${inx + 1}`, 'ether'),
       });
@@ -308,10 +310,11 @@ contract('Lockdrop', (accounts) => {
 
     let sum = toBN(0);
     console.log('json: ', json);
+    let key, bytes, encodedKey = '';
     json.balances.forEach((elt, inx) => {
-      const strippedKey = elt[0];
-      const bytes = Buffer.from(strippedKey, 'hex');
-      const encodedKey = bs58.encode(bytes);
+      key = elt[0];
+      bytes = Buffer.from(key, 'hex');
+      encodedKey = keyring.encodeAddress(bytes);
       // FIXME - why didn't Edgeware originally re-encode the key using bs58 like we have done here prior to the assertion?
       assert.equal(encodedKey, constants.FIXTURES[inx].base58Address);
       sum = sum.add(toBN(elt[1]));

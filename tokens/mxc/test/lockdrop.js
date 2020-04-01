@@ -5,10 +5,8 @@ const constants = require('../helpers/constants');
 const { toWei, toBN, padRight } = web3.utils;
 const rlp = require('rlp');
 const keccak = require('keccak');
-const bs58 = require('bs58');
-const keyring = require('@polkadot/keyring');
 const { decodeAddress, encodeAddress } = require('@polkadot/util-crypto');
-const { stringToU8a, u8aToHex } = require('@polkadot/util');
+const { u8aToHex } = require('@polkadot/util');
 
 const Lock = artifacts.require("./Lock.sol");
 const Lockdrop = artifacts.require("./Lockdrop.sol");

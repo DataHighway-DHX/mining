@@ -41,7 +41,6 @@
     "webpack-dev-server": "^3.10.1"
   },
   "dependencies": {
-    "@polkadot/keyring": "^2.6.2",
     "@polkadot/util-crypto": "^2.7.1",
     "bn.js": "^5.1.1",
     "dotenv": "^8.2.0",

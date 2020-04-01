@@ -1,5 +1,4 @@
 const Promise = require('bluebird');
-const keyring = require('@polkadot/keyring');
 const { toBN, fromWei, hexToNumber } = require('web3').utils;
 const schedule = require('./schedule');
 const generalizedLocks = require('./generalizedLocks');
@@ -282,17 +281,6 @@ const getEdgewareBalanceObjects = (locks, signals, genLocks, totalAllocation, to
     key = currentKey;
     console.log('key: ', key);
     strippedKey = key.slice(2);
-    console.log('strippedKey: ', strippedKey);
-    // const encoded = keyring.encodeAddress(key);
-    // console.log('encoded key with keyring', encoded);
-    // Example:
-    //
-    // $ node
-    // > const bs58 = require('bs58');
-    // > bytes = Buffer.from('2afa34ee0f034817963d83845920938c1d23bd7f7d146f588ff0e0f608fd3b6d4ec0be', 'hex');
-    // <Buffer 2a fa 34 ee 0f 03 48 17 96 3d 83 84 59 20 93 8c 1d 23 bd 7f 7d 14 6f 58 8f f0 e0 f6 08 fd 3b 6d 4e c0 be>
-    // > bs58.encode(bytes)
-    // '5HimYxXdszMgAbPQD49kLbgaBb274ubQpRNDJmZD4fA7KrJq'
     try {
       balances.push([
         strippedKey,

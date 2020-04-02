@@ -28,7 +28,7 @@
 
 ```bash
 git clone https://github.com/DataHighway-com/mining
-cd ./mining/tokens/mxc
+cd ./mining
 ```
 
 ### Install Dependencies

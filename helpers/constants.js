@@ -1,5 +1,10 @@
+const { toBN } = require('web3').utils;
 // June 1st
 // TODO: Change/decide on the launch time
+const TOTAL_ALLOCATION = toBN('100000000000000000000000000', 10); // 100 million (token has 18 decimals)
+const proportion = (toBN('7', 10).div(toBN('10', 10))); // 0.7
+const UNLOCKED_RESERVES_ALLOCATION = TOTAL_ALLOCATION.mul(proportion); // 70 million (70% of total supply)
+const REMAINING_ALLOCATION = TOTAL_ALLOCATION.sub(UNLOCKED_RESERVES_ALLOCATION);
 const MAINNET_LAUNCH_UNIX_TIME = 1559347200;
 const CALCULATE_SIGNALS_FROM_BLOCK = 0; // 8461046
 const FIXTURES = [{
@@ -57,5 +62,7 @@ const FIXTURES = [{
 export {
   CALCULATE_SIGNALS_FROM_BLOCK,
   FIXTURES,
-  MAINNET_LAUNCH_UNIX_TIME
+  MAINNET_LAUNCH_UNIX_TIME,
+  REMAINING_ALLOCATION,
+  TOTAL_ALLOCATION
 }

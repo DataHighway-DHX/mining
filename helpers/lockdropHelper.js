@@ -12,18 +12,36 @@ function getEffectiveValue(ethAmount, term, lockTime, lockStart, totalETH) {
     bonus = schedule.getEarlyParticipationBonus(lockTime, lockStart);
   }
 
+  const HALF = toBN('1', 10).div(toBN('2', 10)); // 0.5
+  let lowestLockBonusMultiplier = toBN(102).add(HALF);
   if (term == '0') {
-    // three month term yields no bonus
-    return toBN(ethAmount).mul(toBN(100).mul(bonus)).div(toBN(10000));
+    // 3 month term yields 102.5% bonus
+    return toBN(ethAmount).mul(lowestLockBonusMultiplier.mul(bonus)).div(toBN(10000));
   } else if (term == '1') {
-    // six month term yields 30% bonus
-    return toBN(ethAmount).mul(toBN(130).mul(bonus)).div(toBN(10000));
+    // 6 month term yields 105% bonus
+    // Note: Use 105/10000 instead of 1.05/100 to generate % since BN.js doesn't support decimals
+    return toBN(ethAmount).mul(toBN(105).mul(bonus)).div(toBN(10000));
   } else if (term == '2') {
-    // twelve month term yields 120% bonus
-    return toBN(ethAmount).mul(toBN(220).mul(bonus)).div(toBN(10000));
+    // 9 month term yields 107.5% bonus
+    return toBN(ethAmount).mul(toBN(107).add(HALF).mul(bonus)).div(toBN(10000));
+  } else if (term == '3') {
+    // 12 month term yields 110% bonus
+    return toBN(ethAmount).mul(toBN(110).mul(bonus)).div(toBN(10000));
+  } else if (term == '4') {
+    // 24 month term yields 115% bonus
+    return toBN(ethAmount).mul(toBN(115).mul(bonus)).div(toBN(10000));
+  } else if (term == '5') {
+    // 36 month term yields 120% bonus
+    return toBN(ethAmount).mul(toBN(120).mul(bonus)).div(toBN(10000));
+    102.5
   } else if (term == 'signaling') {
-    // 80% deduction
-    return toBN(ethAmount).mul(toBN(20)).div(toBN(100));
+    // signalling attracts 10% of lowest locking bonus
+    // Note: 100 + ((102.5 - 100) / 10) = 100.25
+    const proportionOfLowestLockBonusMultiplier = (toBN(100).add((lowestLockBonusMultiplier.sub(toBN(100))).div(toBN(10))));
+    return toBN(ethAmount).mul(lowestLockBonusMultiplier.mul(bonus)).div(toBN(10000));
+  // } else if (term == 'signaling') {
+  //   // 80% deduction
+    // return toBN(ethAmount).mul(toBN(20)).div(toBN(100));
   } else {
     // invalid term
     return toBN(0);

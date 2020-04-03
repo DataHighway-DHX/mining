@@ -7,6 +7,7 @@ const HDWalletProvider = require("truffle-hdwallet-provider");
 const EthereumTx = require('ethereumjs-tx')
 const bs58 = require('bs58');
 const fs = require('fs');
+const constants = require("../helpers/constants");
 const ldHelpers = require("../helpers/lockdropHelper.js");
 
 const EDG_DECIMALS = 18;
@@ -24,7 +25,7 @@ program
   .option('--lockdropContractAddress <addr>', 'The Ethereum address for the target Lockdrop (THIS IS A LOCKDROP CONTRACT)')
   .option('--allocation', 'Create lockdrop_allocations.json, with allocations for the current set of lockers')
   .option('--ending', 'Get the remaining time of the lockdrop')
-  .option('--lockLength <length>', 'The desired lock length (3, 6, or 12)')
+  .option('--lockLength <length>', 'The desired lock length (3, 6, 9, 12, 24, 36)')
   .option('--lockValue <value>', 'The amount of Ether to lock')
   .option('--edgewarePublicKey <publicKey>', 'Edgeware public key')
   .option('--isValidator', 'A boolean flag indicating intent to be a validator')
@@ -50,7 +51,11 @@ async function getCurrentTimestamp(remoteUrl=LOCALHOST_URL) {
   return block.timestamp;
 }
 
-async function getLockdropAllocation(lockdropContractAddresses, remoteUrl=LOCALHOST_URL, totalAllocation='4500000000000000000000000000') {
+async function getLockdropAllocation(
+  lockdropContractAddresses,
+  remoteUrl=LOCALHOST_URL,
+  totalAllocation=constants.REMAINING_ALLOCATION
+) {
   console.log('Fetching Lockdrop locked locks...');
   console.log("");
   console.log(remoteUrl);
@@ -101,13 +106,26 @@ async function getLockdropAllocation(lockdropContractAddresses, remoteUrl=LOCALH
 
 async function lock(lockdropContractAddress, length, value, edgewarePublicKey, isValidator=false, remoteUrl=LOCALHOST_URL) {
   // Ensure lock lengths are valid from the CLI
-  if (['3','6','12'].indexOf(length) === -1) throw new Error('Invalid length, must pass in 3, 6, 12');
+  if (['3','6','9','12','24','36'].indexOf(length) === -1) throw new Error('Invalid length, must pass in 3, 6, 9, 12, 24, 36');
   console.log(`locking ${value} ether into Lockdrop contract for ${length} months. Receiver: ${edgewarePublicKey}, Validator: ${isValidator}`);
   console.log(`Contract ${lockdropContractAddress}`);
   const web3 = getWeb3(remoteUrl);
   const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
   // Format lock length values as their respective enum values for the lockdrop contract
-  let lockLength = (length == "3") ? 0 : (length == "6") ? 1 : 2;
+  let lockLength = "";
+  if (length == "3") {
+    lockLength = 0;
+  } else if (length == "6") {
+    lockLength = 1;
+  } else if (length == "9") {
+    lockLength = 2;
+  } else if (length == "12") {
+    lockLength = 3;
+  } else if (length == "24") {
+    lockLength = 4;
+  } else if (length == "36") {
+    lockLength = 5;
+  }
   // Grab account's transaction nonce for tx params
   let txNonce = await web3.eth.getTransactionCount(web3.currentProvider.addresses[0]);
   // Convert ETH value submitted into WEI

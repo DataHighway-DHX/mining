@@ -30,7 +30,10 @@ contract Lockdrop {
     enum Term {
         ThreeMo,
         SixMo,
-        TwelveMo
+        NineMo,
+        TwelveMo,
+        TwentyFourMo,
+        ThirtySixMo
     }
     // Time constants
     uint256 constant public LOCK_DROP_PERIOD = 1 days * 92; // 3 months
@@ -85,7 +88,10 @@ contract Lockdrop {
     function unlockTimeForTerm(Term term) internal view returns (uint256) {
         if (term == Term.ThreeMo) return now + 92 days;
         if (term == Term.SixMo) return now + 183 days;
+        if (term == Term.NineMo) return now + 275 days;
         if (term == Term.TwelveMo) return now + 365 days;
+        if (term == Term.TwentyFourMo) return now + 730 days;
+        if (term == Term.ThirtySixMo) return now + 1095 days;
         
         revert();
     }

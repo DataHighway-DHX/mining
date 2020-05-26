@@ -10,13 +10,13 @@ const fs = require('fs');
 const constants = require("../helpers/constants");
 const ldHelpers = require("../helpers/lockdropHelper.js");
 
-const EDG_DECIMALS = 18;
-const EDG_PER_BN = toBN(Math.pow(10, EDG_DECIMALS));
+const DHX_DECIMALS = 18;
+const DHX_PER_BN = toBN(Math.pow(10, DHX_DECIMALS));
 
 program
   .version('0.1.0')
   .option('-b, --balance', 'Get the total balance across all locks')
-  .option('-l, --lock', 'Lock ETH with the lockdrop')
+  .option('-l, --lock', 'Lock MXC with the lockdrop')
   .option('-s, --signal <contractAddress>', 'Signal a contract balance in the lockdrop')
   .option('-n, --nonce <nonce>', 'Transaction nonce that created a specific contract address')
   .option('-u, --unlock <contractAddress>', 'Unlock ETH from a specific lock contract')
@@ -25,13 +25,13 @@ program
   .option('--lockdropContractAddress <addr>', 'The Ethereum address for the target Lockdrop (THIS IS A LOCKDROP CONTRACT)')
   .option('--allocation', 'Create lockdrop_allocations.json, with allocations for the current set of lockers')
   .option('--ending', 'Get the remaining time of the lockdrop')
-  .option('--lockLength <length>', 'The desired lock length (3, 6, 9, 12, 24, 36)')
+  .option('--lockTerm <term>', 'The desired lock term (3, 6, 9, 12, 24, 36)')
   .option('--lockValue <value>', 'The amount of Ether to lock')
-  .option('--edgewarePublicKey <publicKey>', 'Edgeware public key')
+  .option('--dataHighwayPublicKey <publicKey>', 'Edgeware public key')
   .option('--isValidator', 'A boolean flag indicating intent to be a validator')
   .option('--locksForAddress <userAddress>', 'Returns the history of lock contracts for a participant in the lockdrop')
   .option('--getNonce', 'Get nonce of lockdrop contract')
-  .option('--send <address>', 'Send  0.1 ETH to arbitrary address')
+  .option('--send <address>', 'Send 0.1 ETH to arbitrary address')
   .parse(process.argv);
 
 function getWeb3(remoteUrl) {
@@ -83,11 +83,11 @@ async function getLockdropAllocation(
   fs.writeFileSync('artifacts/signalData.json', JSON.stringify({ signals, totalETHSignaled, totalEffectiveETHSignaled }, null, 4));
   // calculate total effective ETH for allocation computation
   const totalEffectiveETH = totalEffectiveETHLocked.add(totalEffectiveETHSignaled);
-  console.log(`Total effective ETH: ${totalEffectiveETH.div(EDG_PER_BN)}`);
-  console.log(`Total effective ETH locked: ${totalEffectiveETHLocked.div(EDG_PER_BN)}`);
-  console.log(`Total effective ETH signaled: ${totalEffectiveETHSignaled.div(EDG_PER_BN)}`);
-  console.log(`Total ETH locked: ${totalETHLocked.div(EDG_PER_BN)}`);
-  console.log(`Total ETH signaled: ${totalETHSignaled.div(EDG_PER_BN)}`);
+  console.log(`Total effective ETH: ${totalEffectiveETH.div(DHX_PER_BN)}`);
+  console.log(`Total effective ETH locked: ${totalEffectiveETHLocked.div(DHX_PER_BN)}`);
+  console.log(`Total effective ETH signaled: ${totalEffectiveETHSignaled.div(DHX_PER_BN)}`);
+  console.log(`Total ETH locked: ${totalETHLocked.div(DHX_PER_BN)}`);
+  console.log(`Total ETH signaled: ${totalETHSignaled.div(DHX_PER_BN)}`);
 
   // create JSON file for allocation
   let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, genLocks, totalAllocation, totalEffectiveETH);
@@ -104,27 +104,28 @@ async function getLockdropAllocation(
   return { balances, vesting, validators };
 };
 
-async function lock(lockdropContractAddress, length, value, edgewarePublicKey, isValidator=false, remoteUrl=LOCALHOST_URL) {
-  // Ensure lock lengths are valid from the CLI
-  if (['3','6','9','12','24','36'].indexOf(length) === -1) throw new Error('Invalid length, must pass in 3, 6, 9, 12, 24, 36');
-  console.log(`locking ${value} ether into Lockdrop contract for ${length} months. Receiver: ${edgewarePublicKey}, Validator: ${isValidator}`);
+async function lock(lockdropContractAddress, owner, term, tokenERC20Amount, dataHighwayPublicKey, tokenContractAddress, isValidator=false, remoteUrl=LOCALHOST_URL) {
+  // Ensure lock terms are valid from the CLI
+  if (['3','6','9','12','24','36'].indexOf(term) === -1) throw new Error('Invalid term, must pass in 3, 6, 9, 12, 24, 36');
+  // FIXME - change since now passing in tokenERC20Amount instead of Ether value
+  console.log(`locking ${tokenERC20Amount} into Lockdrop contract for ${term} months. Receiver: ${dataHighwayPublicKey}, Validator: ${isValidator}`);
   console.log(`Contract ${lockdropContractAddress}`);
   const web3 = getWeb3(remoteUrl);
   const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
-  // Format lock length values as their respective enum values for the lockdrop contract
-  let lockLength = "";
-  if (length == "3") {
-    lockLength = 0;
-  } else if (length == "6") {
-    lockLength = 1;
-  } else if (length == "9") {
-    lockLength = 2;
-  } else if (length == "12") {
-    lockLength = 3;
-  } else if (length == "24") {
-    lockLength = 4;
-  } else if (length == "36") {
-    lockLength = 5;
+  // Format lock term values as their respective enum values for the lockdrop contract
+  let lockTerm = "";
+  if (term == "3") {
+    lockTerm = 0;
+  } else if (term == "6") {
+    lockTerm = 1;
+  } else if (term == "9") {
+    lockTerm = 2;
+  } else if (term == "12") {
+    lockTerm = 3;
+  } else if (term == "24") {
+    lockTerm = 4;
+  } else if (term == "36") {
+    lockTerm = 5;
   }
   // Grab account's transaction nonce for tx params
   let txNonce = await web3.eth.getTransactionCount(web3.currentProvider.addresses[0]);
@@ -136,8 +137,8 @@ async function lock(lockdropContractAddress, length, value, edgewarePublicKey, i
     from: web3.currentProvider.addresses[0],
     to: lockdropContractAddress,
     gas: 150000,
-    data: contract.methods.lock(lockLength, edgewarePublicKey, isValidator).encodeABI(),
-    value: toBN(value),
+    data: contract.methods.lock(owner, lockTerm, tokenERC20Amount, dataHighwayPublicKey, tokenContractAddress, isValidator).encodeABI(),
+    value: toBN(0),
   });
   try {
     // Sign the tx and send it
@@ -150,14 +151,13 @@ async function lock(lockdropContractAddress, length, value, edgewarePublicKey, i
   }
 }
 
-async function signal(lockdropContractAddress, signalingAddress, creationNonce, edgewarePublicKey, remoteUrl=LOCALHOST_URL) {
-  console.log(`Signaling from address ${signalingAddress} with nonce ${creationNonce} in lockdrop contract ${lockdropContractAddress}. Receiver ${edgewarePublicKey}`);
-  console.log("");
+async function signal(lockdropContractAddress, signalingAddress, creationNonce, term, dataHighwayPublicKey, tokenContractAddress, remoteUrl=LOCALHOST_URL) {
+  console.log(`Signaling from address ${signalingAddress} with nonce ${creationNonce} in lockdrop contract ${lockdropContractAddress}. Receiver ${dataHighwayPublicKey}`);
   const web3 = getWeb3(remoteUrl);
   const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
   try {
     // Default to HD-Wallet-Provider since EthereumJS-Tx breaks with Signal function
-    const txReceipt = await contract.methods.signal(signalingAddress, creationNonce, edgewarePublicKey).send({
+    const txReceipt = await contract.methods.signal(signalingAddress, creationNonce, term, tokenERC20Amount, dataHighwayPublicKey, tokenContractAddress).send({
       from: web3.currentProvider.addresses[0],
       gas: 150000,
     });
@@ -239,7 +239,7 @@ async function getLocksForAddress(userAddress, lockdropContractAddress, remoteUr
       eth: web3.utils.fromWei(event.returnValues.eth, 'ether'),
       lockContractAddr: event.returnValues.lockAddr,
       term: event.returnValues.term,
-      edgewarePublicKeys: event.returnValues.edgewareAddr,
+      dataHighwayPublicKeys: event.returnValues.edgewareAddr,
       unlockTime: `${(lockStorage.unlockTime - now) / 60} minutes`,
     };
   });
@@ -308,27 +308,27 @@ if (program.lock || program.signal || program.unlock || program.unlockAll) {
 
 // For signaling and locking, ensure an edgeware public address is provided
 if (program.signal || program.lock) {
-  if (!program.edgewarePublicKey) {
+  if (!program.dataHighwayPublicKey) {
     if (EDGEWARE_PUBLIC_KEY) {
-      program.edgewarePublicKey = EDGEWARE_PUBLIC_KEY;
+      program.dataHighwayPublicKey = EDGEWARE_PUBLIC_KEY;
     } else {
-      throw new Error('Please input valid Edgeware 32-byte public key(s) with --edgewarePublicKey');
+      throw new Error('Please input valid Edgeware 32-byte public key(s) with --dataHighwayPublicKey');
     }
   }
 
   // If edgePublicKey is provided, ensure it is at least one 32-byte hex encoded string
   // Submitting multiple keys should be done by concatenating them
-  if (program.edgewarePublicKey.indexOf('0x') === -1) {
+  if (program.dataHighwayPublicKey.indexOf('0x') === -1) {
     // Ensure length is multiple of 64 if sending multiple keys
-    if (program.edgewarePublicKey.length % 64 !== 0) {
-      throw new Error('Please input valid Edgeware 32-byte public key(s) with --edgewarePublicKey');
+    if (program.dataHighwayPublicKey.length % 64 !== 0) {
+      throw new Error('Please input valid Edgeware 32-byte public key(s) with --dataHighwayPublicKey');
     }
   } else {
     // Remove first 0x regardless if it doesn't exist and check validity
-    if (program.edgewarePublicKey.slice(2).length === 0) {
-      throw new Error('Please input valid Edgeware 32-byte public key(s) with --edgewarePublicKey');
-    } else if (program.edgewarePublicKey.slice(2).length % 64 !== 0) {
-      throw new Error('Please input valid Edgeware 32-byte public key(s) with --edgewarePublicKey');
+    if (program.dataHighwayPublicKey.slice(2).length === 0) {
+      throw new Error('Please input valid Edgeware 32-byte public key(s) with --dataHighwayPublicKey');
+    } else if (program.dataHighwayPublicKey.slice(2).length % 64 !== 0) {
+      throw new Error('Please input valid Edgeware 32-byte public key(s) with --dataHighwayPublicKey');
     }
   }
 }
@@ -364,18 +364,18 @@ if (program.ending) {
 
 if (program.lock) {
   // Ensure lock specific values are provided
-  if (!program.lockLength || !program.lockValue) {
-    throw new Error('Please input a length and value using --lockLength and --lockValue');
+  if (!program.lockTerm || !program.lockValue) {
+    throw new Error('Please input a term and value using --lockTerm and --lockValue');
   }
 
   if (!!program.isValidator) {
-    if (program.edgewarePublicKey.length < 192) {
-      throw new Error('To validate you must submit 2 SR25519 public keys and 1 ED25519 publick key concatenated together with --edgewarePublicKey. An example of this would be to submit --edgewarePublicKey 0x9e8f2c6c9b0a4ef5d3c4c524b0f49d7ac60f10a3b0649ff45c0f273420a34732fe1c6e6fd4ecee1cb391f58131ac91ea2debe06d7124564f2e5a03506fbd926dfb6eed2b4afc7284e6ab23f3a55d799a5cf2c64cf2f398f6eb11be5124a3ccfa.');
+    if (program.dataHighwayPublicKey.length < 192) {
+      throw new Error('To validate you must submit 2 SR25519 public keys and 1 ED25519 publick key concatenated together with --dataHighwayPublicKey. An example of this would be to submit --dataHighwayPublicKey 0x9e8f2c6c9b0a4ef5d3c4c524b0f49d7ac60f10a3b0649ff45c0f273420a34732fe1c6e6fd4ecee1cb391f58131ac91ea2debe06d7124564f2e5a03506fbd926dfb6eed2b4afc7284e6ab23f3a55d799a5cf2c64cf2f398f6eb11be5124a3ccfa.');
     }
   }
   // Submit tx
   (async function() {
-    await lock(program.lockdropContractAddress, program.lockLength, program.lockValue, program.edgewarePublicKey, (!!program.isValidator), program.remoteUrl);
+    await lock(program.lockdropContractAddress, program.owner, program.lockTerm, program.lockValue, program.dataHighwayPublicKey, program.tokenContractAddress, (!!program.isValidator), program.remoteUrl);
     process.exit(0);
   })();
 }
@@ -394,7 +394,7 @@ if (program.signal) {
   }
   // Submit tx
   (async function() {
-    await signal(program.lockdropContractAddress, program.signal, program.nonce, program.edgewarePublicKey, program.remoteUrl);
+    await signal(program.lockdropContractAddress, program.signal, program.nonce, program.term, program.tokenERC20Amount, program.dataHighwayPublicKey, program.tokenContractAddress, program.remoteUrl);
     process.exit(0);
   })();
 }

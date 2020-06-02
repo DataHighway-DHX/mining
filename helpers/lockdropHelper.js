@@ -4,7 +4,8 @@ const schedule = require('./schedule');
 const generalizedLocks = require('./generalizedLocks');
 const constants = require("./constants");
 
-function getEffectiveValue(ethAmount, term, lockTime, lockStart, totalETH) {
+// FIXME
+function getEffectiveValue(erc20TokenAmount, term, lockTime, lockStart, totalERC20Token) {
   // multiplicative bonus starts at 100 / 100 = 1
   let bonus = toBN(100);
   // get multiplicative bonus if calculating allocation of locks
@@ -16,32 +17,32 @@ function getEffectiveValue(ethAmount, term, lockTime, lockStart, totalETH) {
   let lowestLockBonusMultiplier = toBN(102).add(HALF);
   if (term == '0') {
     // 3 month term yields 102.5% bonus
-    return toBN(ethAmount).mul(lowestLockBonusMultiplier.mul(bonus)).div(toBN(10000));
+    return toBN(erc20TokenAmount).mul(lowestLockBonusMultiplier.mul(bonus)).div(toBN(10000));
   } else if (term == '1') {
     // 6 month term yields 105% bonus
     // Note: Use 105/10000 instead of 1.05/100 to generate % since BN.js doesn't support decimals
-    return toBN(ethAmount).mul(toBN(105).mul(bonus)).div(toBN(10000));
+    return toBN(erc20TokenAmount).mul(toBN(105).mul(bonus)).div(toBN(10000));
   } else if (term == '2') {
     // 9 month term yields 107.5% bonus
-    return toBN(ethAmount).mul(toBN(107).add(HALF).mul(bonus)).div(toBN(10000));
+    return toBN(erc20TokenAmount).mul(toBN(107).add(HALF).mul(bonus)).div(toBN(10000));
   } else if (term == '3') {
     // 12 month term yields 110% bonus
-    return toBN(ethAmount).mul(toBN(110).mul(bonus)).div(toBN(10000));
+    return toBN(erc20TokenAmount).mul(toBN(110).mul(bonus)).div(toBN(10000));
   } else if (term == '4') {
     // 24 month term yields 115% bonus
-    return toBN(ethAmount).mul(toBN(115).mul(bonus)).div(toBN(10000));
+    return toBN(erc20TokenAmount).mul(toBN(115).mul(bonus)).div(toBN(10000));
   } else if (term == '5') {
     // 36 month term yields 120% bonus
-    return toBN(ethAmount).mul(toBN(120).mul(bonus)).div(toBN(10000));
+    return toBN(erc20TokenAmount).mul(toBN(120).mul(bonus)).div(toBN(10000));
     102.5
   } else if (term == 'signaling') {
     // signalling attracts 10% of lowest locking bonus
     // Note: 100 + ((102.5 - 100) / 10) = 100.25
     const proportionOfLowestLockBonusMultiplier = (toBN(100).add((lowestLockBonusMultiplier.sub(toBN(100))).div(toBN(10))));
-    return toBN(ethAmount).mul(lowestLockBonusMultiplier.mul(bonus)).div(toBN(10000));
+    return toBN(erc20TokenAmount).mul(lowestLockBonusMultiplier.mul(bonus)).div(toBN(10000));
   // } else if (term == 'signaling') {
   //   // 80% deduction
-    // return toBN(ethAmount).mul(toBN(20)).div(toBN(100));
+    // return toBN(erc20TokenAmount).mul(toBN(20)).div(toBN(100));
   } else {
     // invalid term
     return toBN(0);
@@ -69,18 +70,18 @@ const getSignals = async (lockdropContract, address) => {
 };
 
 const getTotalLockedBalance = async (lockdropContract) => {
-  let { totalETHLocked, totalEffectiveETHLocked } = await calculateEffectiveLocks(lockdropContract);
-  return { totalETHLocked, totalEffectiveETHLocked };
+  let { totalERC20TokenLocked, totalEffectiveERC20TokenLocked } = await calculateEffectiveLocks(lockdropContract);
+  return { totalERC20TokenLocked, totalEffectiveERC20TokenLocked };
 };
 
 const getTotalSignaledBalance = async (web3, lockdropContract) => {
-  let { totalETHSignaled, totalEffectiveETHSignaled } = await calculateEffectiveSignals(web3, lockdropContract);
-  return { totalETHSignaled, totalEffectiveETHSignaled };
+  let { totalERC20TokenSignaled, totalEffectiveERC20TokenSignaled } = await calculateEffectiveSignals(web3, lockdropContract);
+  return { totalERC20TokenSignaled, totalEffectiveERC20TokenSignaled };
 };
 
 const calculateEffectiveLocks = async (lockdropContracts) => {
-  let totalETHLocked = toBN(0);
-  let totalEffectiveETHLocked = toBN(0);
+  let totalERC20TokenLocked = toBN(0);
+  let totalEffectiveERC20TokenLocked = toBN(0);
   const locks = {};
   const validatingLocks = {};
 
@@ -105,30 +106,30 @@ const calculateEffectiveLocks = async (lockdropContracts) => {
     const data = event.returnValues;
     // allocate locks to first key if multiple submitted or malformed larger key submitted
     // NOTE: if key was less than length of a correct submission (66 chars), funds are considered lost
-    let keys = [data.edgewareAddr];
+    let keys = [data.dataHighwayPublicKey];
     // FIXME [calculateEffectiveLocks-1] - why are we reducing the length of the decoded public key (hex) here
     // (that we originally decoded in lockdrop.js using `bs58.decode ...`) by removing 6 characters from the end?
     // because if we do this we can't encode it back again in function `getEdgewareBalanceObjects` with `bs58.encode ...`
     // and it causes the assertion in the test 'should ensure base58 encodings are valid to submit' to fail.
     // Also why are we encoding with `bs58.encode ...` but then decoding with Polkadot.js's `keyring.encodeAddress(key)`
-    // if (data.edgewareAddr.length >= 66) {
-    //   keys = data.edgewareAddr.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
+    // if (data.dataHighwayPublicKey.length >= 66) {
+    //   keys = data.dataHighwayPublicKey.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
     // }
-    let value = getEffectiveValue(data.eth, data.term, data.time, lockdropStartTime, totalETHLocked);
-    totalETHLocked = totalETHLocked.add(toBN(data.eth));
-    totalEffectiveETHLocked = totalEffectiveETHLocked.add(value);
+    let value = getEffectiveValue(tokenERC20Amount, data.term, data.time, lockdropStartTime, totalERC20TokenLocked);
+    totalERC20TokenLocked = totalERC20TokenLocked.add(toBN(tokenERC20Amount));
+    totalEffectiveERC20TokenLocked = totalEffectiveERC20TokenLocked.add(value);
 
     // Add all validators to a separate collection to do validator election over later
     if (data.isValidator) {
       if (keys[0] in validatingLocks) {
         validatingLocks[keys[0]] = {
-          lockAmt: toBN(data.eth).add(toBN(validatingLocks[keys[0]].lockAmt)).toString(),
+          lockAmt: toBN(tokenERC20Amount).add(toBN(validatingLocks[keys[0]].lockAmt)).toString(),
           effectiveValue: toBN(validatingLocks[keys[0]].effectiveValue).add(value).toString(),
           lockAddrs: [data.lockAddr, ...validatingLocks[keys[0]].lockAddrs],
         };
       } else {
         validatingLocks[keys[0]] = {
-          lockAmt: toBN(data.eth).toString(),
+          lockAmt: toBN(tokenERC20Amount).toString(),
           effectiveValue: value.toString(),
           lockAddrs: [data.lockAddr],
         };
@@ -139,27 +140,27 @@ const calculateEffectiveLocks = async (lockdropContracts) => {
     // Add all locks to collection, calculating/updating effective value of lock
     if (keys[0] in locks) {
       locks[keys[0]] = {
-        lockAmt: toBN(data.eth).add(toBN(locks[keys[0]].lockAmt)).toString(),
+        lockAmt: toBN(tokenERC20Amount).add(toBN(locks[keys[0]].lockAmt)).toString(),
         effectiveValue: toBN(locks[keys[0]].effectiveValue).add(value).toString(),
         lockAddrs: [data.lockAddr, ...locks[keys[0]].lockAddrs],
       };
     } else {
       locks[keys[0]] = {
-        lockAmt: toBN(data.eth).toString(),
+        lockAmt: toBN(tokenERC20Amount).toString(),
         effectiveValue: value.toString(),
         lockAddrs: [data.lockAddr],
       };
     }
   });
   // Return validating locks, locks, and total ETH locked
-  return { validatingLocks, locks, totalETHLocked, totalEffectiveETHLocked };
+  return { validatingLocks, locks, totalERC20TokenLocked, totalEffectiveERC20TokenLocked };
 };
 
 const calculateEffectiveSignals = async (
   web3, lockdropContracts, blockNumber=constants.CALCULATE_SIGNALS_FROM_BLOCK
 ) => {
-  let totalETHSignaled = toBN(0);
-  let totalEffectiveETHSignaled = toBN(0);
+  let totalERC20TokenSignaled = toBN(0);
+  let totalEffectiveERC20TokenSignaled = toBN(0);
   let signals = {};
   let seenContracts = {};
   let signalEvents = [];
@@ -205,10 +206,10 @@ const calculateEffectiveSignals = async (
       let value;
       // allocate signals to first key if multiple submitted or malformed larger key submitted
       // NOTE: if key was less than length of a correct submission (66 chars), funds are considered lost
-      let keys = [data.edgewareAddr];
+      let keys = [data.dataHighwayPublicKey];
       // FIXME - see other "FIXME [calculateEffectiveLocks-1]" for locks in this file 
-      // if (data.edgewareAddr.length >= 66) {
-      //   keys = data.edgewareAddr.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
+      // if (data.dataHighwayPublicKey.length >= 66) {
+      //   keys = data.dataHighwayPublicKey.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);
       // }
 
       // Treat generalized locks as 3 month locks
@@ -220,16 +221,16 @@ const calculateEffectiveSignals = async (
         } else {
           gLocks[keys[0]] = value.toString();
         }
-        totalETHSignaled = totalETHSignaled.add(toBN(balances[index]));
-        totalEffectiveETHSignaled = totalEffectiveETHSignaled.add(value);
+        totalERC20TokenSignaled = totalERC20TokenSignaled.add(toBN(balances[index]));
+        totalEffectiveERC20TokenSignaled = totalEffectiveERC20TokenSignaled.add(value);
         // keep generalized locks collection separate from other signals
         return;
       } else {
         value = getEffectiveValue(balances[index], 'signaling');
       }
       // Add value to total signaled ETH
-      totalETHSignaled = totalETHSignaled.add(toBN(balances[index]));
-      totalEffectiveETHSignaled = totalEffectiveETHSignaled.add(value);
+      totalERC20TokenSignaled = totalERC20TokenSignaled.add(toBN(balances[index]));
+      totalEffectiveERC20TokenSignaled = totalEffectiveERC20TokenSignaled.add(value);
       // Iterate over signals, partition reward into delayed and immediate amounts
       if (keys[0] in signals) {
         signals[keys[0]] = {
@@ -248,7 +249,7 @@ const calculateEffectiveSignals = async (
     }
   });
   // Return signals and total ETH signaled
-  return { signals, totalETHSignaled, totalEffectiveETHSignaled, genLocks: gLocks }
+  return { signals, totalERC20TokenSignaled, totalEffectiveERC20TokenSignaled, genLocks: gLocks }
 }
 
 const getLockStorage = async (web3, lockAddress) => {

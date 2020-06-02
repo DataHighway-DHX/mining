@@ -67,27 +67,27 @@ async function getLockdropAllocation(
   const {
     locks,
     validatingLocks,
-    totalETHLocked,
-    totalEffectiveETHLocked
+    totalERC20TokenLocked,
+    totalEffectiveERC20TokenLocked
   } = await ldHelpers.calculateEffectiveLocks(contracts);
   // write lock data to file
-  fs.writeFileSync('artifacts/lockData.json', JSON.stringify({ locks, validatingLocks, totalETHLocked, totalEffectiveETHLocked }, null, 4))
+  fs.writeFileSync('artifacts/lockData.json', JSON.stringify({ locks, validatingLocks, totalERC20TokenLocked, totalEffectiveERC20TokenLocked }, null, 4))
   // get signal data
   const {
     signals,
     genLocks,
-    totalETHSignaled,
-    totalEffectiveETHSignaled
+    totalERC20TokenSignaled,
+    totalEffectiveERC20TokenSignaled
   } = await ldHelpers.calculateEffectiveSignals(web3, contracts);
   // write signal data to file
-  fs.writeFileSync('artifacts/signalData.json', JSON.stringify({ signals, totalETHSignaled, totalEffectiveETHSignaled }, null, 4));
+  fs.writeFileSync('artifacts/signalData.json', JSON.stringify({ signals, totalERC20TokenSignaled, totalEffectiveERC20TokenSignaled }, null, 4));
   // calculate total effective ETH for allocation computation
-  const totalEffectiveETH = totalEffectiveETHLocked.add(totalEffectiveETHSignaled);
+  const totalEffectiveETH = totalEffectiveERC20TokenLocked.add(totalEffectiveERC20TokenSignaled);
   console.log(`Total effective ETH: ${totalEffectiveETH.div(DHX_PER_BN)}`);
-  console.log(`Total effective ETH locked: ${totalEffectiveETHLocked.div(DHX_PER_BN)}`);
-  console.log(`Total effective ETH signaled: ${totalEffectiveETHSignaled.div(DHX_PER_BN)}`);
-  console.log(`Total ETH locked: ${totalETHLocked.div(DHX_PER_BN)}`);
-  console.log(`Total ETH signaled: ${totalETHSignaled.div(DHX_PER_BN)}`);
+  console.log(`Total effective ETH locked: ${totalEffectiveERC20TokenLocked.div(DHX_PER_BN)}`);
+  console.log(`Total effective ETH signaled: ${totalEffectiveERC20TokenSignaled.div(DHX_PER_BN)}`);
+  console.log(`Total ETH locked: ${totalERC20TokenLocked.div(DHX_PER_BN)}`);
+  console.log(`Total ETH signaled: ${totalERC20TokenSignaled.div(DHX_PER_BN)}`);
 
   // create JSON file for allocation
   let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, genLocks, totalAllocation, totalEffectiveETH);
@@ -167,8 +167,8 @@ async function signal(lockdropContractAddress, signalingAddress, creationNonce, 
   }
 }
 
-async function unlock(lockContractAddress, remoteUrl=LOCALHOST_URL, nonce=undefined) {
-  console.log(`Unlocking lock contract: ${lockContractAddress}`);
+async function unlock(lockAddr, remoteUrl=LOCALHOST_URL, nonce=undefined) {
+  console.log(`Unlocking lock contract: ${lockAddr}`);
   const web3 = getWeb3(remoteUrl);
   try {
     // Grab account's transaction nonce for tx params if nonce is not provided
@@ -179,7 +179,7 @@ async function unlock(lockContractAddress, remoteUrl=LOCALHOST_URL, nonce=undefi
     const tx = new EthereumTx({
       nonce: nonce,
       from: web3.currentProvider.addresses[0],
-      to: lockContractAddress,
+      to: lockAddr,
       gas: 100000,
     });
     // Sign the tx and send it
@@ -212,9 +212,9 @@ async function getBalance(lockdropContractAddress, remoteUrl=LOCALHOST_URL) {
   console.log(`Fetching Lockdrop balance from lockdrop contract ${lockdropContractAddress}\n`);
   const web3 = getWeb3(remoteUrl);
   const contract = new web3.eth.Contract(LOCKDROP_JSON.abi, lockdropContractAddress);
-  let { totalETHLocked, totalEffectiveETHLocked } = await ldHelpers.getTotalLockedBalance(contract);
-  let { totalETHSignaled, totalEffectiveETHSignaled } = await ldHelpers.getTotalSignaledBalance(web3, contract);
-  return { totalETHLocked, totalEffectiveETHLocked, totalETHSignaled, totalEffectiveETHSignaled };
+  let { totalERC20TokenLocked, totalEffectiveERC20TokenLocked } = await ldHelpers.getTotalLockedBalance(contract);
+  let { totalERC20TokenSignaled, totalEffectiveERC20TokenSignaled } = await ldHelpers.getTotalSignaledBalance(web3, contract);
+  return { totalERC20TokenLocked, totalEffectiveERC20TokenLocked, totalERC20TokenSignaled, totalEffectiveERC20TokenSignaled };
 };
 
 async function getEnding(lockdropContractAddress, remoteUrl=LOCALHOST_URL) {
@@ -239,7 +239,7 @@ async function getLocksForAddress(userAddress, lockdropContractAddress, remoteUr
       eth: web3.utils.fromWei(event.returnValues.eth, 'ether'),
       lockContractAddr: event.returnValues.lockAddr,
       term: event.returnValues.term,
-      dataHighwayPublicKeys: event.returnValues.edgewareAddr,
+      dataHighwayPublicKeys: event.returnValues.dataHighwayPublicKey,
       unlockTime: `${(lockStorage.unlockTime - now) / 60} minutes`,
     };
   });
@@ -344,12 +344,12 @@ if (program.allocation) {
 if (program.balance) {
   (async function() {
     let {
-      totalETHLocked,
-      totalETHSignaled,
-      totalEffectiveETHLocked,
-      totalEffectiveETHSignaled
+      totalERC20TokenLocked,
+      totalERC20TokenSignaled,
+      totalEffectiveERC20TokenLocked,
+      totalEffectiveERC20TokenSignaled
     } = await getBalance(program.lockdropContractAddress, program.remoteUrl);
-    console.log(`Total ETH locked: ${fromWei(totalETHLocked, 'ether')}\nTotal ETH signaled: ${fromWei(totalETHSignaled, 'ether')}`);
+    console.log(`Total ETH locked: ${fromWei(totalERC20TokenLocked, 'ether')}\nTotal ETH signaled: ${fromWei(totalERC20TokenSignaled, 'ether')}`);
     process.exit(0);
   })();
 };

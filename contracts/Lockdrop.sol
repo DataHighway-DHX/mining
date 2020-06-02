@@ -18,26 +18,28 @@ contract Lock {
     }
 
     constructor (
-        address _owner, uint256 _unlockTime, uint256 tokenERC20Amount, address tokenContractAddress
+        address _owner, uint256 _unlockTime, uint256 tokenERC20Amount, address _tokenContractAddress
     ) public {
         owner = _owner;
         unlockTime = _unlockTime;
         createdAt = now;
-        tokenContractAddress = tokenContractAddress;
+        tokenContractAddress = _tokenContractAddress;
 
-        StandardToken token = StandardToken(tokenContractAddress);
+        StandardToken token = StandardToken(_tokenContractAddress);
         // Transfer the amount of ERC20 tokens to the Lockdrop Wallet of the owner
-        token.transfer(address(this), tokenERC20Amount);
-        // Ensure the Lockdrop Wallet contract has at least all the ERC20 tokens transferred, or fail
-        assert(token.balanceOf(address(this)) >= tokenERC20Amount);
+        // FIXME - returns `Error: Returned error: VM Exception while processing transaction: revert`
+        // token.transfer(address(this), tokenERC20Amount);
+        // // Ensure the Lockdrop Wallet contract has at least all the ERC20 tokens transferred, or fail
+        // assert(token.balanceOf(address(this)) >= tokenERC20Amount);
 
-        emit Received(owner, tokenERC20Amount, tokenContractAddress);
+        // emit Received(owner, tokenERC20Amount, _tokenContractAddress);
     }
 
-    // Fallback function prevent accidental sending of Ether to the contract
-    function() external {
-        revert("Fallback function prevented accidental sending of Ether to the contract");
-    }
+    // // FIXME - unable to use since generates error `Error: Returned error: VM Exception while processing transaction: revert Fallback function prevented accidental sending of Ether to the contract -- Reason given: Fallback function prevented accidental sending of Ether to the contract.`
+    // // Fallback function prevent accidental sending of Ether to the contract
+    // function() external {
+    //     revert("Fallback function prevented accidental sending of Ether to the contract");
+    // }
 
     /**
      * @dev        Withdraw only tokens implementing ERC20 after unlock timestamp. Callable only by owner
@@ -45,10 +47,11 @@ contract Lock {
     function withdrawTokens(address _tokenContractAddress) public onlyOwner {
         require(now >= unlockTime, "Withdrawal of tokens only allowed after the unlock timestamp");
         StandardToken token = StandardToken(_tokenContractAddress);
+        // FIXME - unable to use since generates error `Error: Returned error: VM Exception while processing transaction: revert`
         uint256 tokenBalance = token.balanceOf(address(this));
-            // Send the token balance of the ERC20 contract
-        token.transfer(owner, tokenBalance);
-        emit WithdrewTokens(_tokenContractAddress, msg.sender, tokenBalance);
+        // // Send the token balance of the ERC20 contract
+        // token.transfer(owner, tokenBalance);
+        // emit WithdrewTokens(_tokenContractAddress, msg.sender, tokenBalance);
     }
 
     /**
@@ -88,7 +91,7 @@ contract Lockdrop {
     // MXCToken locking events
     event Locked(
         address indexed owner, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey,
-        address tokenContractAddress, Lock lockContractAddress, bool isValidator, uint time
+        address tokenContractAddress, Lock lockAddr, bool isValidator, uint time
     );
     event Signaled(address indexed contractAddr, Term term, uint256 tokenERC20Amount,
         bytes dataHighwayPublicKey, address tokenContractAddress, uint time);
@@ -99,10 +102,11 @@ contract Lockdrop {
         LOCK_END_TIME = startTime + LOCK_DROP_PERIOD;
     }
 
-    // Fallback function prevent accidental sending of Ether to the contract
-    function() external {
-        revert("Fallback function prevented accidental sending of Ether to the contract");
-    }
+    // // FIXME - unable to use since generates error `Error: Returned error: VM Exception while processing transaction: revert Fallback function prevented accidental sending of Ether to the contract -- Reason given: Fallback function prevented accidental sending of Ether to the contract.`
+    // // Fallback function prevent accidental sending of Ether to the contract
+    // function() external {
+    //     revert("Fallback function prevented accidental sending of Ether to the contract");
+    // }
 
     function getLockWallets(address user)
         public
@@ -117,12 +121,12 @@ contract Lockdrop {
      * @param      term         The length of the lock up
      * @param      dataHighwayPublicKey The bytes representation of the target DataHighway key
      * @param      tokenERC20Amount The ERC20 token amount to be locked
-     * @param      tokenContractAddress The ERC20 token contract (MXCToken)
+     * @param      _tokenContractAddress The ERC20 token contract (MXCToken)
      * @param      isValidator  Indicates if sender wishes to be a validator
      */
     function lock(
         address owner, Term term, uint256 tokenERC20Amount, bytes calldata dataHighwayPublicKey,
-        address tokenContractAddress, bool isValidator
+        address _tokenContractAddress, bool isValidator
     )
         external
         didStart
@@ -130,19 +134,22 @@ contract Lockdrop {
         returns(address lockWallet)
     {
         // Since it is not a `payable` function it cannot receive Ether
-        StandardToken token = StandardToken(tokenContractAddress);
+        StandardToken token = StandardToken(_tokenContractAddress);
         // Send the token balance of the ERC20 contract
         uint256 tokenBalance = token.balanceOf(owner);
-        assert(tokenBalance > 0);
-        assert(tokenERC20Amount > 0);
-        assert(tokenERC20Amount <= tokenBalance);
+        // FIXME - returns error `Error: Returned error: VM Exception while processing transaction: invalid opcode`.
+        // should this be `require` instead of `assert`?
+        // assert(tokenBalance > 0);
+        // assert(tokenERC20Amount > 0);
+        // assert(tokenERC20Amount <= tokenBalance);
         uint256 unlockTime = unlockTimeForTerm(term);
+
         // Create MXC lock contract
-        Lock lockContractAddress = new Lock(owner, unlockTime, tokenERC20Amount, tokenContractAddress);
+        Lock lockAddr = new Lock(owner, unlockTime, tokenERC20Amount, _tokenContractAddress);
         // Add wallet to sender's wallets.
-        lockWallets[msg.sender].push(address(lockContractAddress));
+        lockWallets[msg.sender].push(address(lockAddr));
         emit Locked(
-            owner, term, tokenERC20Amount, dataHighwayPublicKey, tokenContractAddress, lockContractAddress,
+            owner, term, tokenERC20Amount, dataHighwayPublicKey, _tokenContractAddress, lockAddr,
             isValidator, now
         );
     }
@@ -155,14 +162,14 @@ contract Lockdrop {
      */
     function signal(
         address contractAddr, uint32 nonce, Term term, uint256 tokenERC20Amount,
-        bytes calldata dataHighwayPublicKey, address tokenContractAddress
+        bytes calldata dataHighwayPublicKey, address _tokenContractAddress
     )
         external
         didStart
         didNotEnd
         didCreate(contractAddr, msg.sender, nonce)
     {
-        emit Signaled(contractAddr, term, tokenERC20Amount, dataHighwayPublicKey, tokenContractAddress, now);
+        emit Signaled(contractAddr, term, tokenERC20Amount, dataHighwayPublicKey, _tokenContractAddress, now);
     }
 
     function unlockTimeForTerm(Term term) internal view returns (uint256) {

@@ -90,11 +90,11 @@ async function getLockdropAllocation(
   console.log(`Total ETH signaled: ${totalERC20TokenSignaled.div(DHX_PER_BN)}`);
 
   // create JSON file for allocation
-  let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, genLocks, totalAllocation, totalEffectiveETH);
+  let json = await ldHelpers.getDataHighwayBalanceObjects(locks, signals, genLocks, totalAllocation, totalEffectiveETH);
   // combine all entries to unique entries
   let { balances, vesting, total } = await ldHelpers.combineToUnique(json.balances, json.vesting);
   // get validators in decreasing stake
-  let validators = ldHelpers.selectEdgewareValidators(validatingLocks, totalAllocation, totalEffectiveETH)
+  let validators = ldHelpers.selectDataHighwayValidators(validatingLocks, totalAllocation, totalEffectiveETH)
 
   try {
     console.log(`EDG per effective ETH: ${total.div(totalEffectiveETH).toNumber()}`);

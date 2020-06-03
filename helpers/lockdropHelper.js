@@ -109,7 +109,7 @@ const calculateEffectiveLocks = async (lockdropContracts) => {
     let keys = [data.dataHighwayPublicKey];
     // FIXME [calculateEffectiveLocks-1] - why are we reducing the length of the decoded public key (hex) here
     // (that we originally decoded in lockdrop.js using `bs58.decode ...`) by removing 6 characters from the end?
-    // because if we do this we can't encode it back again in function `getEdgewareBalanceObjects` with `bs58.encode ...`
+    // because if we do this we can't encode it back again in function `getDataHighwayBalanceObjects` with `bs58.encode ...`
     // and it causes the assertion in the test 'should ensure base58 encodings are valid to submit' to fail.
     // Also why are we encoding with `bs58.encode ...` but then decoding with Polkadot.js's `keyring.encodeAddress(key)`
     // if (data.dataHighwayPublicKey.length >= 66) {
@@ -264,9 +264,9 @@ const getLockStorage = async (web3, lockAddress) => {
   });
 };
 
-const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffectiveETH, numOfValidators, existentialBalance=100000000000000) => {
+const selectDataHighwayValidators = (validatingLocks, totalAllocation, totalEffectiveETH, numOfValidators, existentialBalance=100000000000000) => {
   const sortable = [];
-  // Add the calculated edgeware balances with the respective key to a collection
+  // Add the calculated DataHighway balances with the respective key to a collection
   for (var key in validatingLocks) {
     const keys = key.slice(2).match(/.{1,64}/g).map(key => `0x${key}`);;
     if (keys.length === 3) {
@@ -288,7 +288,7 @@ const selectEdgewareValidators = (validatingLocks, totalAllocation, totalEffecti
     });
 };
 
-const getEdgewareBalanceObjects = (locks, signals, genLocks, totalAllocation, totalEffectiveETH, existentialBalance=100000000000000) => {
+const getDataHighwayBalanceObjects = (locks, signals, genLocks, totalAllocation, totalEffectiveETH, existentialBalance=100000000000000) => {
   console.log('locks: ', locks);
   let balances = [];
   let vesting = [];
@@ -437,7 +437,7 @@ module.exports = {
   calculateEffectiveLocks,
   calculateEffectiveSignals,
   getLockStorage,
-  selectEdgewareValidators,
-  getEdgewareBalanceObjects,
+  selectDataHighwayValidators,
+  getDataHighwayBalanceObjects,
   combineToUnique,
 };

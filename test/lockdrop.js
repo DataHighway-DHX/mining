@@ -206,7 +206,7 @@ contract('Lockdrop', (accounts) => {
     let { signals, totalEffectiveERC20TokenSignaled, genLocks } = signalAllocation;
     console.log('signals, totalEffectiveERC20TokenSignaled: ', signals, totalEffectiveERC20TokenSignaled)
     const totalEffectiveETH = totalEffectiveERC20TokenLocked.add(totalEffectiveERC20TokenSignaled);
-    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, genLocks, constants.TOTAL_ALLOCATION, totalEffectiveETH);
+    let json = await ldHelpers.getDataHighwayBalanceObjects(locks, signals, genLocks, constants.TOTAL_ALLOCATION, totalEffectiveETH);
 
     const bal = toBN(constants.TOTAL_ALLOCATION).div(toBN(accounts.length)).toString();
     json.balances.forEach(elt => {
@@ -227,7 +227,7 @@ contract('Lockdrop', (accounts) => {
     const signalAllocation = await ldHelpers.calculateEffectiveSignals(web3, lockdropAsArray);
     let { signals, totalEffectiveERC20TokenSignaled, genLocks } = signalAllocation;
     const totalEffectiveETH = totalEffectiveERC20TokenLocked.add(totalEffectiveERC20TokenSignaled);
-    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, genLocks, constants.TOTAL_ALLOCATION, totalEffectiveETH);
+    let json = await ldHelpers.getDataHighwayBalanceObjects(locks, signals, genLocks, constants.TOTAL_ALLOCATION, totalEffectiveETH);
 
     const bal = toBN(constants.TOTAL_ALLOCATION).div(toBN(accounts.length)).toString();
     json.balances.forEach(elt => {
@@ -248,7 +248,7 @@ contract('Lockdrop', (accounts) => {
     const signalAllocation = await ldHelpers.calculateEffectiveSignals(web3, lockdropAsArray);
     let { signals, totalEffectiveERC20TokenSignaled, genLocks } = signalAllocation;
     const totalEffectiveETH = totalEffectiveERC20TokenLocked.add(totalEffectiveERC20TokenSignaled);
-    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, genLocks, constants.TOTAL_ALLOCATION, totalEffectiveETH);
+    let json = await ldHelpers.getDataHighwayBalanceObjects(locks, signals, genLocks, constants.TOTAL_ALLOCATION, totalEffectiveETH);
 
     const bal = toBN(constants.TOTAL_ALLOCATION).div(toBN(accounts.length)).toString();
     json.balances.forEach(elt => {
@@ -290,8 +290,8 @@ contract('Lockdrop', (accounts) => {
     const signalAllocation = await ldHelpers.calculateEffectiveSignals(web3, lockdropAsArray);
     let { signals, totalEffectiveERC20TokenSignaled, genLocks } = signalAllocation;
     const totalEffectiveETH = totalEffectiveERC20TokenLocked.add(totalEffectiveERC20TokenSignaled);
-    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, genLocks, constants.TOTAL_ALLOCATION, totalEffectiveETH);
-    let validators = ldHelpers.selectEdgewareValidators(validatingLocks, constants.TOTAL_ALLOCATION, totalEffectiveETH, 10);
+    let json = await ldHelpers.getDataHighwayBalanceObjects(locks, signals, genLocks, constants.TOTAL_ALLOCATION, totalEffectiveETH);
+    let validators = ldHelpers.selectDataHighwayValidators(validatingLocks, constants.TOTAL_ALLOCATION, totalEffectiveETH, 10);
     assert(validators.length < 10);
     assert.ok(json.hasOwnProperty('balances'));
     assert.ok(json.hasOwnProperty('vesting'));
@@ -359,8 +359,8 @@ contract('Lockdrop', (accounts) => {
     console.log('Locks in ETH: ', totalERC20TokenLockedInETH);
     let totalERC20TokenSignaledInETH = web3.utils.fromWei(totalEffectiveERC20TokenSignaled.toString(), 'ether');
     console.log('Signalled in ETH: ', totalERC20TokenSignaledInETH);
-    let json = await ldHelpers.getEdgewareBalanceObjects(locks, signals, genLocks, constants.TOTAL_ALLOCATION, totalEffectiveETH);
-    let validators = ldHelpers.selectEdgewareValidators(validatingLocks, constants.TOTAL_ALLOCATION, totalEffectiveETH, 4);
+    let json = await ldHelpers.getDataHighwayBalanceObjects(locks, signals, genLocks, constants.TOTAL_ALLOCATION, totalEffectiveETH);
+    let validators = ldHelpers.selectDataHighwayValidators(validatingLocks, constants.TOTAL_ALLOCATION, totalEffectiveETH, 4);
 
     let sum = toBN(0);
     console.log('json: ', json);

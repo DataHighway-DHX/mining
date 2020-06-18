@@ -71,12 +71,19 @@ module.exports = {
       host: "178.25.19.88",
       port: 80             
     },
-    "rinkeby": {
-      provider: () => new HDWalletProvider(process.env.MNENOMIC, "https://rinkeby.infura.io/v3/" + process.env.INFURA_API_KEY_RINKEBY),
-      network_id: 4,
+    "ropsten": {
+      provider: () => new HDWalletProvider(process.env.MNENOMIC, "wss://ropsten.infura.io/ws/v3/" + process.env.INFURA_API_KEY),
+      network_id: 3,
       gas: 3000000,
       gasPrice: 10000000000,
       websockets: true
+    },
+    "rinkeby": {
+      provider: () => new HDWalletProvider(process.env.MNENOMIC, "https://rinkeby.infura.io/v3/" + process.env.INFURA_API_KEY),
+      network_id: 4,
+      gas: 3000000,
+      gasPrice: 10000000000,
+      websockets: false
     },
     // Custom private network using default rpc settings
     "staging": {

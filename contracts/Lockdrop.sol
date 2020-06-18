@@ -103,13 +103,13 @@ contract Lockdrop {
     uint256 public LOCK_END_TIME;
     // MXCToken locking events
     event Locked(
-        address indexed owner, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey,
+        address indexed lockdropCreator, address indexed owner, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey,
         address tokenContractAddress, Lock lockAddr, bool isValidator, uint time
     );
     event Signaled(address indexed lockdropCreator, address indexed contractAddr, Term term, uint256 tokenERC20Amount,
         bytes dataHighwayPublicKey, address tokenContractAddress, uint time);
     event ClaimLockedPending(
-        address tokenContractAddress, Lock lockAddr, uint time
+        address tokenContractAddress, Lock lockAddr, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey, uint time
     );
     event ClaimLockedApproved(
         address tokenContractAddress, Lock lockAddr, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey, uint time
@@ -118,13 +118,13 @@ contract Lockdrop {
         address tokenContractAddress, Lock lockAddr, uint time
     );
     event ClaimSignalledPending(
-        address tokenContractAddress, Lock lockAddr, uint time
+        address tokenContractAddress, address indexed contractAddr, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey, uint time
     );
     event ClaimSignalledApproved(
-        address tokenContractAddress, Lock lockAddr, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey, uint time
+        address tokenContractAddress, address indexed contractAddr, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey, uint time
     );
     event ClaimSignalledRejected(
-        address tokenContractAddress, Lock lockAddr, uint time
+        address tokenContractAddress, address indexed contractAddr, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey, uint time
     );
 
     constructor(uint startTime) public {
@@ -186,7 +186,7 @@ contract Lockdrop {
             isValidator, now
         );
         emit ClaimLockedPending(
-            _tokenContractAddress, lockAddr, now
+            _tokenContractAddress, lockAddr, term, tokenERC20Amount, dataHighwayPublicKey, now
         );
     }
 
@@ -263,7 +263,7 @@ contract Lockdrop {
 
     // FIXME - initially we will only approve or reject. later we will partially approve
     function claimLockedApproved(address _tokenContractAddress, Lock lockAddr, Term term,
-        uint256 tokenERC20Amount, bytes calldata dataHighwayPublicKey)
+        uint256 tokenERC20Amount, bytes memory dataHighwayPublicKey)
         public onlyLockdropCreator
     {
         uint256 unlockTime = unlockTimeForTerm(term);
@@ -287,7 +287,7 @@ contract Lockdrop {
 
     // FIXME - initially we will only approve or reject. later we will partially approve
     function claimSignalledApproved(address _tokenContractAddress, address contractAddr,
-        Term term, uint256 tokenERC20Amount, bytes calldata dataHighwayPublicKey)
+        Term term, uint256 tokenERC20Amount, bytes memory dataHighwayPublicKey)
         public onlyLockdropCreator
     {
         uint256 unlockTime = unlockTimeForTerm(term);
@@ -302,12 +302,13 @@ contract Lockdrop {
         );
     }
 
-    function claimSignalledRejected(address _tokenContractAddress, address contractAddr)
+    function claimSignalledRejected(address _tokenContractAddress, address contractAddr,
+        Term term, uint256 tokenERC20Amount, bytes memory dataHighwayPublicKey)
         public onlyLockdropCreator
     {
         claimsSignalledRejected[msg.sender].push(address(contractAddr));
         emit ClaimSignalledRejected(
-            _tokenContractAddress, contractAddr, now
+            _tokenContractAddress, contractAddr, term, tokenERC20Amount, dataHighwayPublicKey, now
         );
     }
 

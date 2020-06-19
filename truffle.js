@@ -72,14 +72,21 @@ module.exports = {
       port: 80             
     },
     "ropsten": {
-      provider: () => new HDWalletProvider(process.env.MNENOMIC, "wss://ropsten.infura.io/ws/v3/" + process.env.INFURA_API_KEY),
+      provider: () => new HDWalletProvider(process.env.MNENOMIC, "https://ropsten.infura.io/v3/" + process.env.INFURA_API_PROJECT_ID),
       network_id: 3,
-      gas: 3000000,
+      gas: 5500000,        // Ropsten has a lower block limit than mainnet
       gasPrice: 10000000000,
-      websockets: true
+      confirmations: 2, // # of confs to wait between deployments. (default: 0)
+      skipDryRun: true,
+      // websockets: false
+      // gasPrice: 10000000000,
+      networkCheckTimeout: "100000",
+      // confirmations: 2, // # of confs to wait between deployments. (default: 0)
+      // skipDryRun: true,
+      websockets: false
     },
     "rinkeby": {
-      provider: () => new HDWalletProvider(process.env.MNENOMIC, "https://rinkeby.infura.io/v3/" + process.env.INFURA_API_KEY),
+      provider: () => new HDWalletProvider(process.env.MNENOMIC, "https://rinkeby.infura.io/v3/" + process.env.INFURA_API_PROJECT_ID),
       network_id: 4,
       gas: 3000000,
       gasPrice: 10000000000,

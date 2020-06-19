@@ -1,5 +1,6 @@
 // Original Source: https://github.com/hicommonwealth/edgeware-lockdrop
 pragma solidity >=0.5.16 <0.7.0;
+// pragma experimental ABIEncoderV2;
 
 import "./lib/StandardToken.sol";
 
@@ -19,7 +20,7 @@ contract Lock {
     }
 
     constructor (
-        address _lockdropCreator, address _owner, uint256 _unlockTime, uint256 tokenERC20Amount, address _tokenContractAddress
+        address _lockdropCreator, address _owner, uint256 _unlockTime, uint256 _tokenERC20Amount, address _tokenContractAddress
     ) public {
         lockdropCreator = _lockdropCreator;
         owner = _owner;
@@ -30,11 +31,11 @@ contract Lock {
         StandardToken token = StandardToken(_tokenContractAddress);
         // Transfer the amount of ERC20 tokens to the Lockdrop Wallet of the owner
         // FIXME - returns `Error: Returned error: VM Exception while processing transaction: revert`
-        // token.transfer(address(this), tokenERC20Amount);
+        // token.transfer(address(this), _tokenERC20Amount);
         // // Ensure the Lockdrop Wallet contract has at least all the ERC20 tokens transferred, or fail
-        // assert(token.balanceOf(address(this)) >= tokenERC20Amount);
+        // assert(token.balanceOf(address(this)) >= _tokenERC20Amount);
 
-        // emit Received(owner, tokenERC20Amount, _tokenContractAddress);
+        // emit Received(_owner, _tokenERC20Amount, _tokenContractAddress);
     }
 
     // // FIXME - unable to use since generates error `Error: Returned error: VM Exception while processing transaction: revert Fallback function prevented accidental sending of Ether to the contract -- Reason given: Fallback function prevented accidental sending of Ether to the contract.`
@@ -52,7 +53,7 @@ contract Lock {
         // FIXME - unable to use since generates error `Error: Returned error: VM Exception while processing transaction: revert`
         uint256 tokenBalance = token.balanceOf(address(this));
         // // Send the token balance of the ERC20 contract
-        // token.transfer(owner, tokenBalance);
+        // token.transfer(_owner, tokenBalance);
         // emit WithdrewTokens(_tokenContractAddress, msg.sender, tokenBalance);
     }
 
@@ -76,60 +77,67 @@ contract Lock {
  */
 contract Lockdrop {
     address public lockdropCreator;
-    mapping(address => address[]) lockWallets;
-    mapping(address => address[]) claimsLockedPending;
-    mapping(address => address[]) claimsLockedApproved;
-    mapping(address => address[]) claimsLockedRejected;
-    mapping(address => address[]) claimsSignalledPending;
-    mapping(address => address[]) claimsSignalledApproved;
-    mapping(address => address[]) claimsSignalledRejected;
+
+    enum ClaimType { Lock, Signal }
+    // 0: pending, 1: approved, 2: rejected
+    enum ClaimStatus { Pending, Approved, Rejected }
+    enum Term { ThreeMo, SixMo, NineMo, TwelveMo, TwentyFourMo, ThirtySixMo }
+
+    struct LockWalletStruct {
+        ClaimStatus claimStatus;
+        uint256 approvedTokenERC20Amount;
+        Term term;
+        uint256 tokenERC20Amount;
+        bytes dataHighwayPublicKey;
+        Lock lockAddr;
+        bool isValidator;
+        // TODO - replace all usage of `now` with type `uint48` since uses less memory
+        uint256 createdAt;
+    }
+
+    struct SignalWalletStruct {
+        ClaimStatus claimStatus;
+        uint256 approvedTokenERC20Amount;
+        Term term;
+        uint256 tokenERC20Amount;
+        bytes dataHighwayPublicKey;
+        address contractAddr; // Signal "Contract" claim type only
+        uint32 nonce; // Signal "Contract" claim type only
+        uint256 createdAt;
+    }
+
+    // mapping owner to a mapping of tokenContractAddress and LockWalletStruct
+    mapping(address => mapping(address => LockWalletStruct)) public lockWalletStructs;
+    // Retrieve list of all lock wallet user addresses
+    address[2][] public lockWallets;
+
+    // mapping owner to a mapping of tokenContractAddress and SignalWalletStruct
+    mapping(address => mapping(address => SignalWalletStruct)) public signalWalletStructs;
 
     modifier onlyLockdropCreator {
         require(msg.sender == lockdropCreator, "Sender must be lockdrop contract creator");
         _;
     }
 
-    enum Term {
-        ThreeMo,
-        SixMo,
-        NineMo,
-        TwelveMo,
-        TwentyFourMo,
-        ThirtySixMo
-    }
     // Time constants
     uint256 constant public LOCK_DROP_PERIOD = 1 days * 92; // 3 months
     uint256 public LOCK_START_TIME;
     uint256 public LOCK_END_TIME;
+
     // MXCToken locking events
     event Locked(
-        address indexed lockdropCreator, address indexed owner, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey,
+        address indexed sender, address indexed owner, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey,
         address tokenContractAddress, Lock lockAddr, bool isValidator, uint time
     );
-    event Signaled(address indexed lockdropCreator, address indexed contractAddr, Term term, uint256 tokenERC20Amount,
+    event Signaled(address indexed sender, address indexed contractAddr, uint nonce, Term term, uint256 tokenERC20Amount,
         bytes dataHighwayPublicKey, address tokenContractAddress, uint time);
-    event ClaimLockedPending(
-        address tokenContractAddress, Lock lockAddr, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey, uint time
-    );
-    event ClaimLockedApproved(
-        address tokenContractAddress, Lock lockAddr, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey, uint time
-    );
-    event ClaimLockedRejected(
-        address tokenContractAddress, Lock lockAddr, uint time
-    );
-    event ClaimSignalledPending(
-        address tokenContractAddress, address indexed contractAddr, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey, uint time
-    );
-    event ClaimSignalledApproved(
-        address tokenContractAddress, address indexed contractAddr, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey, uint time
-    );
-    event ClaimSignalledRejected(
-        address tokenContractAddress, address indexed contractAddr, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey, uint time
+    event ClaimStatusUpdated(
+        address user, ClaimType claimType, address tokenContractAddress, ClaimStatus claimStatus, uint256 approvedTokenERC20Amount, uint time
     );
 
     constructor(uint startTime) public {
         lockdropCreator = msg.sender;
-        LOCK_START_TIME = startTime;
+        LOCK_START_TIME = startTime; // Unix epoch time
         LOCK_END_TIME = startTime + LOCK_DROP_PERIOD;
     }
 
@@ -139,26 +147,18 @@ contract Lockdrop {
     //     revert("Fallback function prevented accidental sending of Ether to the contract");
     // }
 
-    function getLockWallets(address user)
-        public
-        view
-        returns(address[] memory)
-    {
-        return lockWallets[user];
-    }
-
     /**
      * @dev        Locks up the value sent to contract in a new Lock
-     * @param      owner        Owner of a Lock contract (differs from the Lockdrop contract creator)
-     * @param      term         The length of the lock up
-     * @param      dataHighwayPublicKey The bytes representation of the target DataHighway key
-     * @param      tokenERC20Amount The ERC20 token amount to be locked
+     * @param      _owner        Owner of a Lock contract (differs from the Lockdrop contract creator)
+     * @param      _term         The length of the lock up
+     * @param      _dataHighwayPublicKey The bytes representation of the target DataHighway key
+     * @param      _tokenERC20Amount The ERC20 token amount to be locked
      * @param      _tokenContractAddress The ERC20 token contract (MXCToken)
-     * @param      isValidator  Indicates if sender wishes to be a validator
+     * @param      _isValidator  Indicates if sender wishes to be a validator
      */
     function lock(
-        address owner, Term term, uint256 tokenERC20Amount, bytes calldata dataHighwayPublicKey,
-        address _tokenContractAddress, bool isValidator
+        address _owner, Term _term, uint256 _tokenERC20Amount, bytes calldata _dataHighwayPublicKey,
+        address _tokenContractAddress, bool _isValidator
     )
         external
         didStart
@@ -168,157 +168,158 @@ contract Lockdrop {
         // Since it is not a `payable` function it cannot receive Ether
         StandardToken token = StandardToken(_tokenContractAddress);
         // Send the token balance of the ERC20 contract
-        uint256 tokenBalance = token.balanceOf(owner);
+        uint256 tokenBalance = token.balanceOf(_owner);
         // FIXME - returns error `Error: Returned error: VM Exception while processing transaction: invalid opcode`.
         // should this be `require` instead of `assert`?
-        // assert(tokenBalance > 0);
-        // assert(tokenERC20Amount > 0);
-        // assert(tokenERC20Amount <= tokenBalance);
-        uint256 unlockTime = unlockTimeForTerm(term);
+        // require(tokenBalance > 0);
+        // require(_tokenERC20Amount > 0);
+        // require(_tokenERC20Amount <= tokenBalance);
+        // TODO - replace with uint48
+        uint256 unlockTime = unlockTimeForTerm(_term);
 
         // Create MXC lock contract
-        Lock lockAddr = new Lock(lockdropCreator, owner, unlockTime, tokenERC20Amount, _tokenContractAddress);
-        // Add wallet to sender's wallets.
-        lockWallets[msg.sender].push(address(lockAddr));
-        claimsLockedPending[msg.sender].push(address(lockAddr));
-        emit Locked(
-            lockdropCreator, owner, term, tokenERC20Amount, dataHighwayPublicKey, _tokenContractAddress, lockAddr,
-            isValidator, now
+        Lock _lockAddr = new Lock(lockdropCreator, _owner, unlockTime, _tokenERC20Amount, _tokenContractAddress);
+
+        lockWalletStructs[_owner][_tokenContractAddress] = LockWalletStruct(
+            {
+                claimStatus: ClaimStatus.Pending, // pending (default)
+                approvedTokenERC20Amount: 0,
+                term: _term,
+                tokenERC20Amount: _tokenERC20Amount,
+                dataHighwayPublicKey: _dataHighwayPublicKey,
+                lockAddr: _lockAddr,
+                isValidator: _isValidator,
+                createdAt: now
+            }
         );
-        emit ClaimLockedPending(
-            _tokenContractAddress, lockAddr, term, tokenERC20Amount, dataHighwayPublicKey, now
+        // FIXME - this doesn't work
+        // // Add wallet to sender's wallets.
+        // lockWallets[_owner][_tokenContractAddress].push(address(_lockAddr));
+
+        emit Locked(
+            msg.sender, _owner, _term, _tokenERC20Amount, _dataHighwayPublicKey, _tokenContractAddress, _lockAddr,
+            _isValidator, now
         );
     }
 
     /**
-     * @dev        Signals a contract's (or address's) balance decided after lock period
-     * @param      contractAddr  The contract address from which to signal the balance of
-     * @param      nonce         The transaction nonce of the creator of the contract
-     * @param      dataHighwayPublicKey   The bytes representation of the target DataHighway key
+     * @dev        Signals an address's balance decided after lock period
+     * @param      _dataHighwayPublicKey   The bytes representation of the target DataHighway key
      */
     function signal(
-        address contractAddr, uint32 nonce, Term term, uint256 tokenERC20Amount,
-        bytes calldata dataHighwayPublicKey, address _tokenContractAddress
+        Term _term, uint256 _tokenERC20Amount,
+        bytes calldata _dataHighwayPublicKey, address _tokenContractAddress
     )
         external
         didStart
         didNotEnd
-        didCreate(contractAddr, msg.sender, nonce)
     {
-        // FIXME - is this enough info to store?
-        claimsSignalledPending[msg.sender].push(address(contractAddr));
-        emit Signaled(lockdropCreator, contractAddr, term, tokenERC20Amount, dataHighwayPublicKey, _tokenContractAddress, now);
-        emit ClaimSignalledPending(
-            _tokenContractAddress, contractAddr, term, tokenERC20Amount, dataHighwayPublicKey, now
+        address fakeContractAddr = address(0x0);
+        uint32 fakeNonce = 0;
+        signalWalletStructs[msg.sender][_tokenContractAddress] = SignalWalletStruct(
+            {
+                claimStatus: ClaimStatus.Pending, // pending (default)
+                approvedTokenERC20Amount: 0,
+                term: _term,
+                tokenERC20Amount: _tokenERC20Amount,
+                dataHighwayPublicKey: _dataHighwayPublicKey,
+                contractAddr: fakeContractAddr, // only for signalFromContract
+                nonce: fakeNonce, // only for signalFromContract
+                createdAt: now
+            }
         );
+
+        emit Signaled(msg.sender, fakeContractAddr, fakeNonce, _term, _tokenERC20Amount, _dataHighwayPublicKey, _tokenContractAddress, now);
     }
 
-    function getClaimsLockedPending(address user)
-        public
-        view
-        returns(address[] memory)
+    /**
+     * @dev        Signals a contract's balance decided after lock period
+     * @param      _contractAddr  The contract address from which to signal the balance of
+     * @param      _nonce         The transaction nonce of the creator of the contract
+     * @param      _dataHighwayPublicKey   The bytes representation of the target DataHighway key
+     */
+    function signalFromContract(
+        address _contractAddr, uint32 _nonce, Term _term, uint256 _tokenERC20Amount,
+        bytes calldata _dataHighwayPublicKey, address _tokenContractAddress
+    )
+        external
+        didStart
+        didNotEnd
+        didCreate(_contractAddr, msg.sender, _nonce)
     {
-        return claimsLockedPending[user];
+        signalWalletStructs[_contractAddr][_tokenContractAddress] = SignalWalletStruct(
+            {
+                claimStatus: ClaimStatus.Pending, // pending (default)
+                approvedTokenERC20Amount: 0,
+                term: _term,
+                tokenERC20Amount: _tokenERC20Amount,
+                dataHighwayPublicKey: _dataHighwayPublicKey,
+                contractAddr: _contractAddr, // only for signalFromContract
+                nonce: _nonce, // only for signalFromContract
+                createdAt: now
+            }
+        );
+
+        emit Signaled(msg.sender, _contractAddr, _nonce, _term, _tokenERC20Amount, _dataHighwayPublicKey, _tokenContractAddress, now);
     }
 
-    function getClaimsLockedApproved(address user)
-        public
-        view
-        returns(address[] memory)
-    {
-        return claimsLockedApproved[user];
-    }
+    // // TODO - not required, can retrieve direct from mapping. See https://medium.com/coinmonks/solidity-tutorial-returning-structs-from-public-functions-e78e48efb378
+    // // Retrieve lock wallet info for specific user address and token
+    // function getLockWalletInfo(address _user, address _tokenContractAddress)
+    //     public
+    //     view
+    //     returns(LockWalletStruct memory lockWalletStructs)
+    // {
+    //     return lockWalletStructs[_user][_tokenContractAddress];
+    // }
 
-    function getClaimsLockedRejected(address user)
-        public
-        view
-        returns(address[] memory)
-    {
-        return claimsLockedRejected[user];
-    }
+    // // TODO - not required, can retrieve direct from mapping
+    // // Retrieve signal info for specific user address and token
+    // function getSignalWalletInfo(address _user, address _tokenContractAddress)
+    //     public
+    //     view
+    //     returns(SignalWalletStruct memory signalWalletStructs)
+    // {
+    //     return signalWalletStructs[_user][_tokenContractAddress];
+    // }
 
-    function getClaimsSignalledPending(address user)
-        public
-        view
-        returns(address[] memory)
-    {
-        return claimsSignalledPending[user];
-    }
-
-    function getClaimsSignalledApproved(address user)
-        public
-        view
-        returns(address[] memory)
-    {
-        return claimsSignalledApproved[user];
-    }
-
-    function getClaimsSignalledRejected(address user)
-        public
-        view
-        returns(address[] memory)
-    {
-        return claimsSignalledRejected[user];
-    }
-
-    // FIXME - initially we will only approve or reject. later we will partially approve
-    function claimLockedApproved(address _tokenContractAddress, Lock lockAddr, Term term,
-        uint256 tokenERC20Amount, bytes memory dataHighwayPublicKey)
+    // Set claim status and partially or fully approve claim. By lockdrop creator only
+    function setClaimStatus(address _user, ClaimType _claimType, address _tokenContractAddress,
+        ClaimStatus _claimStatus, uint256 _approvedTokenERC20Amount)
         public onlyLockdropCreator
     {
-        uint256 unlockTime = unlockTimeForTerm(term);
-        // FIXME - do we need to store the _tokenContractAddress as well as the lockAddr
-        // in claimsLockedApproved to allow for tokens stored on MXC and IOTA-E ERC20 tokens?
-        // FIXME - how do we store unlockTime as the value of `claimsLockedApproved` too?
-        claimsLockedApproved[msg.sender].push(address(lockAddr));
-        emit ClaimLockedApproved(
-            _tokenContractAddress, lockAddr, term, tokenERC20Amount, dataHighwayPublicKey, now
+        // StandardToken token = StandardToken(_tokenContractAddress);
+        // uint256 tokenBalance = token.balanceOf(_user);
+
+        // Lock
+        if(_claimType == ClaimType.Lock) {
+            // require(_approvedTokenERC20Amount <= tokenBalance,
+            //     "Cannot approve lock value greater than token balance");
+            // require(signalWalletStructs[_user][_tokenContractAddress].approvedTokenERC20Amount < _approvedTokenERC20Amount,
+            //     "Cannot set approved amount for lock that is greater that approved amount for signal");
+            lockWalletStructs[_user][_tokenContractAddress].claimStatus = _claimStatus;
+            lockWalletStructs[_user][_tokenContractAddress].approvedTokenERC20Amount = _approvedTokenERC20Amount;
+        // Signal
+        } else if(_claimType == ClaimType.Signal) {
+            // require(_approvedTokenERC20Amount <= tokenBalance,
+            //     "Cannot approve signal value greater than token balance");
+            // require(lockWalletStructs[_user][_tokenContractAddress].approvedTokenERC20Amount < _approvedTokenERC20Amount,
+            //     "Cannot set approved amount for signal that is greater that approved amount for lock");
+            signalWalletStructs[_user][_tokenContractAddress].claimStatus = _claimStatus;
+            signalWalletStructs[_user][_tokenContractAddress].approvedTokenERC20Amount = _approvedTokenERC20Amount;
+        }
+        emit ClaimStatusUpdated(
+            _user, _claimType, _tokenContractAddress, _claimStatus, _approvedTokenERC20Amount, now
         );
     }
 
-    function claimLockedRejected(address _tokenContractAddress, Lock lockAddr)
-        public onlyLockdropCreator
-    {
-        claimsLockedRejected[msg.sender].push(address(lockAddr));
-        emit ClaimLockedRejected(
-            _tokenContractAddress, lockAddr, now
-        );
-    }
-
-    // FIXME - initially we will only approve or reject. later we will partially approve
-    function claimSignalledApproved(address _tokenContractAddress, address contractAddr,
-        Term term, uint256 tokenERC20Amount, bytes memory dataHighwayPublicKey)
-        public onlyLockdropCreator
-    {
-        uint256 unlockTime = unlockTimeForTerm(term);
-        // FIXME - do we need to store the _tokenContractAddress as well as the lockAddr
-        // in claimsLockedApproved to allow for tokens stored on MXC and IOTA-E ERC20 tokens?
-        // FIXME - how do we store unlockTime as the value of `claimsLockedApproved` too?
-
-        // FIXME - is this enough info to store?
-        claimsSignalledApproved[msg.sender].push(address(contractAddr));
-        emit ClaimSignalledApproved(
-            _tokenContractAddress, contractAddr, term, tokenERC20Amount, dataHighwayPublicKey, now
-        );
-    }
-
-    function claimSignalledRejected(address _tokenContractAddress, address contractAddr,
-        Term term, uint256 tokenERC20Amount, bytes memory dataHighwayPublicKey)
-        public onlyLockdropCreator
-    {
-        claimsSignalledRejected[msg.sender].push(address(contractAddr));
-        emit ClaimSignalledRejected(
-            _tokenContractAddress, contractAddr, term, tokenERC20Amount, dataHighwayPublicKey, now
-        );
-    }
-
-    function unlockTimeForTerm(Term term) internal view returns (uint256) {
-        if (term == Term.ThreeMo) return now + 92 days;
-        if (term == Term.SixMo) return now + 183 days;
-        if (term == Term.NineMo) return now + 275 days;
-        if (term == Term.TwelveMo) return now + 365 days;
-        if (term == Term.TwentyFourMo) return now + 730 days;
-        if (term == Term.ThirtySixMo) return now + 1095 days;
+    function unlockTimeForTerm(Term _term) internal view returns (uint256) {
+        if (_term == Term.ThreeMo) return now + 92 days;
+        if (_term == Term.SixMo) return now + 183 days;
+        if (_term == Term.NineMo) return now + 275 days;
+        if (_term == Term.TwelveMo) return now + 365 days;
+        if (_term == Term.TwentyFourMo) return now + 730 days;
+        if (_term == Term.ThirtySixMo) return now + 1095 days;
 
         revert("Unlock time for term provided is not supported");
     }
@@ -362,16 +363,16 @@ contract Lockdrop {
 
     /**
      * @dev        Ensures the target address was created by a parent at some nonce
-     * @param      target  The target contract address (or trivially the parent)
-     * @param      parent  The creator of the alleged contract address
-     * @param      nonce   The creator's tx nonce at the time of the contract creation
+     * @param      _target  The target contract address (or trivially the parent)
+     * @param      _parent  The creator of the alleged contract address
+     * @param      _nonce   The creator's tx nonce at the time of the contract creation
      */
-    modifier didCreate(address target, address parent, uint32 nonce) {
+    modifier didCreate(address _target, address _parent, uint32 _nonce) {
         // Trivially let senders "create" themselves
-        if (target == parent) {
+        if (_target == _parent) {
             _;
         } else {
-            require(target == addressFrom(parent, nonce), "Target address must be created by a parent at some nonce");
+            require(_target == addressFrom(_parent, _nonce), "Target address must be created by a parent at some nonce");
             _;
         }
     }

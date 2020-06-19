@@ -2,7 +2,8 @@
 pragma solidity >=0.5.16 <0.7.0;
 // pragma experimental ABIEncoderV2;
 
-import "./lib/StandardToken.sol";
+// import "./lib/StandardToken.sol";
+import "./interface/ERC20.sol";
 
 /**
  * @title Lockdrop Wallet
@@ -28,10 +29,12 @@ contract Lock {
         createdAt = now;
         tokenContractAddress = _tokenContractAddress;
 
-        StandardToken token = StandardToken(_tokenContractAddress);
+        ERC20 token = ERC20(_tokenContractAddress);
         // Transfer the amount of ERC20 tokens to the Lockdrop Wallet of the owner
         // FIXME - returns `Error: Returned error: VM Exception while processing transaction: revert`
         // token.transfer(address(this), _tokenERC20Amount);
+        // Try to send to itself
+        // require(token.transferFrom(address(this), address(this), uint256(_tokenERC20Amount)) == true, "Could not send tokens");
         // // Ensure the Lockdrop Wallet contract has at least all the ERC20 tokens transferred, or fail
         // assert(token.balanceOf(address(this)) >= _tokenERC20Amount);
 
@@ -49,7 +52,7 @@ contract Lock {
      */
     function withdrawTokens(address _tokenContractAddress) public onlyOwner {
         require(now >= unlockTime, "Withdrawal of tokens only allowed after the unlock timestamp");
-        StandardToken token = StandardToken(_tokenContractAddress);
+        ERC20 token = ERC20(_tokenContractAddress);
         // FIXME - unable to use since generates error `Error: Returned error: VM Exception while processing transaction: revert`
         uint256 tokenBalance = token.balanceOf(address(this));
         // // Send the token balance of the ERC20 contract
@@ -62,7 +65,7 @@ contract Lock {
      *             and locked MXCToken balance
      */
    function info() public view returns(address, address, uint256, uint256, uint256) {
-        StandardToken token = StandardToken(address(this.tokenContractAddress));
+        ERC20 token = ERC20(address(this.tokenContractAddress));
         uint256 tokenBalance = token.balanceOf(address(this));
         return (lockdropCreator, owner, unlockTime, createdAt, tokenBalance);
     }
@@ -166,15 +169,18 @@ contract Lockdrop {
         returns(address lockWallet)
     {
         // Since it is not a `payable` function it cannot receive Ether
-        StandardToken token = StandardToken(_tokenContractAddress);
+        ERC20 token = ERC20(_tokenContractAddress);
         // Send the token balance of the ERC20 contract
+
+        // FIXME - same issue as in `setClaimStatus` function, where value of `tokenBalance` is incorrect,
+        // so the assertions don't work
         uint256 tokenBalance = token.balanceOf(_owner);
         // FIXME - returns error `Error: Returned error: VM Exception while processing transaction: invalid opcode`.
         // should this be `require` instead of `assert`?
         // require(tokenBalance > 0);
         // require(_tokenERC20Amount > 0);
         // require(_tokenERC20Amount <= tokenBalance);
-        // TODO - replace with uint48
+        // TODO - consider replacing with uint48
         uint256 unlockTime = unlockTimeForTerm(_term);
 
         // Create MXC lock contract
@@ -288,25 +294,36 @@ contract Lockdrop {
         ClaimStatus _claimStatus, uint256 _approvedTokenERC20Amount)
         public onlyLockdropCreator
     {
-        // StandardToken token = StandardToken(_tokenContractAddress);
-        // uint256 tokenBalance = token.balanceOf(_user);
+        ERC20 token = ERC20(_tokenContractAddress);
+        // FIXME - when I run this in Remix, why is the value of `tokenBalance` here equal to the value of
+        // `tokenERC20Amount` that provide to the `signal(..)` function (i.e. 100), instead of 2664965800 where
+        // this user deployed the MXCToken contract???
+        uint256 tokenBalance = token.balanceOf(_user);
 
         // Lock
         if(_claimType == ClaimType.Lock) {
-            // require(_approvedTokenERC20Amount <= tokenBalance,
-            //     "Cannot approve lock value greater than token balance");
-            // require(signalWalletStructs[_user][_tokenContractAddress].approvedTokenERC20Amount < _approvedTokenERC20Amount,
-            //     "Cannot set approved amount for lock that is greater that approved amount for signal");
+            require(_approvedTokenERC20Amount <= tokenBalance,
+                "Cannot approve lock value greater than token balance");
+            require(signalWalletStructs[_user][_tokenContractAddress].approvedTokenERC20Amount < _approvedTokenERC20Amount,
+                "Cannot set approved amount for lock that is greater that approved amount for signal");
+            require(lockWalletStructs[_user][_tokenContractAddress].tokenERC20Amount >= _approvedTokenERC20Amount,
+                "Cannot set approved amount for lock that is greater that locked amount");
             lockWalletStructs[_user][_tokenContractAddress].claimStatus = _claimStatus;
             lockWalletStructs[_user][_tokenContractAddress].approvedTokenERC20Amount = _approvedTokenERC20Amount;
         // Signal
         } else if(_claimType == ClaimType.Signal) {
-            // require(_approvedTokenERC20Amount <= tokenBalance,
-            //     "Cannot approve signal value greater than token balance");
-            // require(lockWalletStructs[_user][_tokenContractAddress].approvedTokenERC20Amount < _approvedTokenERC20Amount,
-            //     "Cannot set approved amount for signal that is greater that approved amount for lock");
+            // FIXME - this doesn't work. If use account that deployed Lockdrop that has balance of 2664965800 MXC,
+            // and I enter 2664965801 for `_approvedTokenERC20Amount`, this still runs without triggering the assertion
+            require(_approvedTokenERC20Amount <= tokenBalance,
+                "Cannot approve signal value greater than token balance");
+            require(lockWalletStructs[_user][_tokenContractAddress].approvedTokenERC20Amount < _approvedTokenERC20Amount,
+                "Cannot set approved amount for lock that is greater that approved amount for signal");
+            require(signalWalletStructs[_user][_tokenContractAddress].tokenERC20Amount >= _approvedTokenERC20Amount,
+                "Cannot set approved amount for signal that is greater that signaled amount");
             signalWalletStructs[_user][_tokenContractAddress].claimStatus = _claimStatus;
             signalWalletStructs[_user][_tokenContractAddress].approvedTokenERC20Amount = _approvedTokenERC20Amount;
+            // FIXME - remove below line as was used for debugging to see what the value of `tokenBalance` is in the UI
+            signalWalletStructs[_user][_tokenContractAddress].tokenERC20Amount = tokenBalance;
         }
         emit ClaimStatusUpdated(
             _user, _claimType, _tokenContractAddress, _claimStatus, _approvedTokenERC20Amount, now

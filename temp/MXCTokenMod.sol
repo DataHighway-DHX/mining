@@ -66,6 +66,7 @@ library SafeMath {
 contract ERC20Basic {
     function totalSupply() public view returns (uint256);
     function balanceOf(address who) public view returns (uint256);
+    // TODO - potentially change `tokens` to be of type `uint` instead of `uint256` (so it's the same as Weenus token)
     function transfer(address to, uint256 value) public returns (bool);
     event Transfer(address indexed from, address indexed to, uint256 value);
 }
@@ -78,6 +79,7 @@ contract ERC20 is ERC20Basic {
     function allowance(address owner, address spender)
         public view returns (uint256);
 
+    // TODO - potentially change `tokens` to be of type `uint` instead of `uint256` (so it's the same as Weenus token)
     function transferFrom(address from, address to, uint256 value)
         public returns (bool);
 
@@ -113,7 +115,10 @@ contract BasicToken is ERC20Basic {
     * @param _to The address to transfer to.
     * @param _value The amount to be transferred.
     */
+    // TODO - potentially change `tokens` to be of type `uint` instead of `uint256` (so it's the same as Weenus token)
+    // TODO - note that Weenus token returns `bool success` not just `bool`
     function transfer(address _to, uint256 _value) public returns (bool) {
+        // TODO - note that Weenus token doesn't have either of these assertions
         require(_to != address(0));
         require(_value <= balances[msg.sender]);
 
@@ -153,14 +158,17 @@ contract StandardToken is ERC20, BasicToken {
     function transferFrom(
         address _from,
         address _to,
+        // TODO - potentially change `tokens` to be of type `uint` instead of `uint256` (so it's the same as Weenus token)
         uint256 _value
     )
         public
+            // TODO - note that Weenus token returns `bool success` not just `bool`
         returns (bool)
     {
-        require(_to != address(0));
-        require(_value <= balances[_from]);
-        require(_value <= allowed[_from][msg.sender]);
+        // TODO - note that Weenus token contract doesn't have any of the below assertions
+        // require(_to != address(0));
+        // require(_value <= balances[_from]);
+        // require(_value <= allowed[_from][msg.sender]);
 
         balances[_from] = balances[_from].sub(_value);
         balances[_to] = balances[_to].add(_value);
@@ -179,6 +187,7 @@ contract StandardToken is ERC20, BasicToken {
     * @param _spender The address which will spend the funds.
     * @param _value The amount of tokens to be spent.
     */
+    // TODO - potentially change `tokens` to be of type `uint` instead of `uint256` (so it's the same as Weenus token)
     function approve(address _spender, uint256 _value) public returns (bool) {
         allowed[msg.sender][_spender] = _value;
         emit Approval(msg.sender, _spender, _value);

@@ -80,14 +80,14 @@ contract ERC20 is ERC20Basic {
         public view returns (uint256);
 
     // TODO - potentially change `tokens` to be of type `uint` instead of `uint256` (so it's the same as Weenus token)
-    function transferFrom(address from, address to, uint256 value)
-        public returns (bool);
+    function transferFrom(address from, address to, uint value)
+        public returns (bool success);
 
-    function approve(address spender, uint256 value) public returns (bool);
+    function approve(address spender, uint value) public returns (bool success);
     event Approval(
         address indexed owner,
         address indexed spender,
-        uint256 value
+        uint value
     );
 }
 
@@ -159,11 +159,11 @@ contract StandardToken is ERC20, BasicToken {
         address _from,
         address _to,
         // TODO - potentially change `tokens` to be of type `uint` instead of `uint256` (so it's the same as Weenus token)
-        uint256 _value
+        uint _value
     )
         public
             // TODO - note that Weenus token returns `bool success` not just `bool`
-        returns (bool)
+        returns (bool success)
     {
         // TODO - note that Weenus token contract doesn't have any of the below assertions
         // require(_to != address(0));
@@ -188,7 +188,7 @@ contract StandardToken is ERC20, BasicToken {
     * @param _value The amount of tokens to be spent.
     */
     // TODO - potentially change `tokens` to be of type `uint` instead of `uint256` (so it's the same as Weenus token)
-    function approve(address _spender, uint256 _value) public returns (bool) {
+    function approve(address _spender, uint _value) public returns (bool success) {
         allowed[msg.sender][_spender] = _value;
         emit Approval(msg.sender, _spender, _value);
         return true;

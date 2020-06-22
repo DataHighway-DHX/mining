@@ -43,14 +43,6 @@ contract Lock {
         lockContractTokenCapacity = _tokenERC20Amount;
         dataHighwayPublicKey = _dataHighwayPublicKey;
         isValidator = _isValidator;
-        // Transfer the amount of ERC20 tokens to the Lockdrop Wallet of the owner
-        // FIXME - returns `Error: Returned error: VM Exception while processing transaction: revert`
-        // token.transfer(address(this), _tokenERC20Amount);
-        // Try to send to itself
-        // require(token.transferFrom(address(this), address(this), uint256(_tokenERC20Amount)) == true, "Could not send tokens");
-        // // Ensure the Lockdrop Wallet contract has at least all the ERC20 tokens transferred, or fail
-        // assert(token.balanceOf(address(this)) >= _tokenERC20Amount);
-
         emit Created(msg.sender, unlockTime, lockAddress, tokenContractAddress, lockContractTokenCapacity, dataHighwayPublicKey, isValidator, lockContractCreatedAt);
     }
 

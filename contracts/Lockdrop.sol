@@ -49,14 +49,12 @@ contract Lock {
     // Prior to executing this function ensure that you have called the `approve` function
     // of the ERC20 token stored in this Lock contract with at least the amount you wish to deposit (e.g. lockContractTokenCapacity).
     function depositTokens() public onlyOwner {
-        // PRODUCTION & TESTING ONLY - In development comment out the below line or set the unlock time to match the time you created Lockdrop contract
-        require(now >= unlockTime, "Withdrawal of tokens only allowed after the unlock timestamp");
-        uint256 lockContractBalanceExisting = token.balanceOf(address(this));
-        require(lockContractBalanceExisting > 0, "Lock address must have at least some ERC20 tokens to withdraw");
-        require(token.transfer(msg.sender, lockContractBalance), "Unable to withdraw ERC20 tokens from Lock contract");
+        require(now < unlockTime, "Deposit of tokens only allowed before the unlock timestamp");
+        require(token.balanceOf(msg.sender) >= lockContractTokenCapacity, "Lock owner address must have at least the amount ERC20 tokens they want to deposit");
+        require(token.transferFrom(msg.sender, address(this), lockContractTokenCapacity), "Unable to deposit ERC20 tokens from Lock owner to Lock contract");
+        require(token.balanceOf(address(this)) == lockContractTokenCapacity, "Lock contract deposit of ERC20 tokens should equal the Lock contract ERC20 token capacity");
         lockContractBalance = token.balanceOf(address(this));
-        require(lockContractBalance == 0, "Lock address should have been depleted of all ERC20 tokens after withdrawal");
-        lockContractWithdrewLastAt = now;
+        lockContractDepositedLastAt = now;
         emit DepositedTokens(msg.sender, unlockTime, tokenContractAddress, lockContractTokenCapacity, lockContractBalance, dataHighwayPublicKey, isValidator, lockContractDepositedLastAt);
     }
 
@@ -70,10 +68,10 @@ contract Lock {
      * @dev        Withdraw only tokens implementing ERC20 after unlock timestamp. Callable only by owner
      */
     function withdrawTokens() public onlyOwner {
+        // PRODUCTION & TESTING ONLY - In development comment out the below line or set the unlock time to match the time you created Lockdrop contract
         require(now >= unlockTime, "Withdrawal of tokens only allowed after the unlock timestamp");
         uint256 lockContractBalanceExisting = token.balanceOf(address(this));
         require(lockContractBalanceExisting > 0, "Lock address must have at least some ERC20 tokens to withdraw");
-        // Send the token balance of the ERC20 contract
         require(token.transfer(msg.sender, lockContractBalance), "Unable to withdraw ERC20 tokens from Lock contract");
         lockContractBalance = token.balanceOf(address(this));
         require(lockContractBalance == 0, "Lock address should have been depleted of all ERC20 tokens after withdrawal");

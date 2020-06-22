@@ -10,26 +10,39 @@ import "./interface/ERC20.sol";
  */
 contract Lock {
     address public lockdropCreator;
-    address public owner;
-    uint256 public unlockTime;
-    uint256 public createdAt;
+    address public lockAddress;
+    address public lockOwner;
+    ERC20 token;
     address public tokenContractAddress;
+    uint256 public lockContractCreatedAt; // when Lock contract was created
+    uint256 public lockContractTokenCapacity;
+    bytes public dataHighwayPublicKey;
+    bool public isValidator;
+
+    uint256 public lockContractDepositedLastAt;
+    uint256 public lockContractBalance;
+    uint256 public lockContractWithdrewLastAt;
+    uint256 public unlockTime;
 
     modifier onlyOwner {
-        require(msg.sender == owner, "Sender must be contract owner");
+        require(msg.sender == lockOwner, "Sender must be contract owner");
         _;
     }
 
     constructor (
-        address _lockdropCreator, address _owner, uint256 _unlockTime, uint256 _tokenERC20Amount, address _tokenContractAddress
+        address _lockdropCreator, address _owner, uint256 _unlockTime, uint256 _tokenERC20Amount, bytes memory _dataHighwayPublicKey,
+        address _tokenContractAddress, bool _isValidator
     ) public {
         lockdropCreator = _lockdropCreator;
-        owner = _owner;
-        unlockTime = _unlockTime;
-        createdAt = now;
+        lockOwner = _owner;
+        lockContractCreatedAt = now;
         tokenContractAddress = _tokenContractAddress;
-
         ERC20 token = ERC20(_tokenContractAddress);
+        lockAddress = address(this);
+        unlockTime = _unlockTime;
+        lockContractTokenCapacity = _tokenERC20Amount;
+        dataHighwayPublicKey = _dataHighwayPublicKey;
+        isValidator = _isValidator;
         // Transfer the amount of ERC20 tokens to the Lockdrop Wallet of the owner
         // FIXME - returns `Error: Returned error: VM Exception while processing transaction: revert`
         // token.transfer(address(this), _tokenERC20Amount);
@@ -38,7 +51,19 @@ contract Lock {
         // // Ensure the Lockdrop Wallet contract has at least all the ERC20 tokens transferred, or fail
         // assert(token.balanceOf(address(this)) >= _tokenERC20Amount);
 
-        // emit Received(_owner, _tokenERC20Amount, _tokenContractAddress);
+        emit Created(msg.sender, unlockTime, lockAddress, tokenContractAddress, lockContractTokenCapacity, dataHighwayPublicKey, isValidator, lockContractCreatedAt);
+    }
+
+    // Prior to executing this function ensure that you have called the `approve` function
+    // of the ERC20 token stored in this Lock contract with at least the amount you wish to deposit (e.g. lockContractTokenCapacity).
+    function depositTokens() public onlyOwner {
+        require(now < unlockTime, "Deposit of tokens only allowed before the unlock timestamp");
+        require(token.balanceOf(msg.sender) >= lockContractTokenCapacity, "Lock owner address must have at least the amount ERC20 tokens they want to deposit");
+        require(token.transferFrom(msg.sender, address(this), lockContractTokenCapacity), "Unable to deposit ERC20 tokens from Lock owner to Lock contract");
+        require(token.balanceOf(address(this)) == lockContractTokenCapacity, "Lock contract deposit of ERC20 tokens should equal the Lock contract ERC20 token capacity");
+        lockContractBalance = token.balanceOf(address(this));
+        lockContractDepositedLastAt = now;
+        emit DepositedTokens(msg.sender, unlockTime, tokenContractAddress, lockContractTokenCapacity, lockContractBalance, dataHighwayPublicKey, isValidator, lockContractDepositedLastAt);
     }
 
     // // FIXME - unable to use since generates error `Error: Returned error: VM Exception while processing transaction: revert Fallback function prevented accidental sending of Ether to the contract -- Reason given: Fallback function prevented accidental sending of Ether to the contract.`
@@ -50,29 +75,32 @@ contract Lock {
     /**
      * @dev        Withdraw only tokens implementing ERC20 after unlock timestamp. Callable only by owner
      */
-    function withdrawTokens(address _tokenContractAddress) public onlyOwner {
+    function withdrawTokens() public onlyOwner {
         require(now >= unlockTime, "Withdrawal of tokens only allowed after the unlock timestamp");
-        ERC20 token = ERC20(_tokenContractAddress);
-        // FIXME - unable to use since generates error `Error: Returned error: VM Exception while processing transaction: revert`
-        uint256 tokenBalance = token.balanceOf(address(this));
-        // // Send the token balance of the ERC20 contract
-        // token.transfer(_owner, tokenBalance);
-        // emit WithdrewTokens(_tokenContractAddress, msg.sender, tokenBalance);
+        uint256 lockContractBalanceExisting = token.balanceOf(address(this));
+        require(lockContractBalanceExisting > 0, "Lock address must have at least some ERC20 tokens to withdraw");
+        // Send the token balance of the ERC20 contract
+        require(token.transfer(msg.sender, lockContractBalance), "Unable to withdraw ERC20 tokens from Lock contract");
+        lockContractBalance = token.balanceOf(address(this));
+        require(lockContractBalance == 0, "Lock address should have been depleted of all ERC20 tokens after withdrawal");
+        lockContractWithdrewLastAt = now;
+        emit WithdrewTokens(msg.sender, unlockTime, tokenContractAddress, lockContractBalance, lockContractBalance, dataHighwayPublicKey, isValidator, lockContractWithdrewLastAt);
     }
 
     /**
-     * @dev        Info returns owner, timestamp of unlock time, contract created timestamp,
-     *             and locked MXCToken balance
+     * @dev        Info returns Lock contract creator, address and owner, the ERC20 token address, timestamp of unlock time, Lock contract created timestamp,
+     *             capacity of ERC20 tokens that may be locked, DataHighway public key, whether user wants to be a validator on the DataHighway, and when
+     *             the Lock contract was created, and the timestamp of when the last deposit and withdrawal occured.
      */
-   function info() public view returns(address, address, uint256, uint256, uint256) {
-        ERC20 token = ERC20(address(this.tokenContractAddress));
+   function info() public view returns(address, address, address, address, uint256, uint256, bytes memory, bool, uint256, uint256, uint256) {
         uint256 tokenBalance = token.balanceOf(address(this));
-        return (lockdropCreator, owner, unlockTime, createdAt, tokenBalance);
+        return (lockdropCreator, lockAddress, lockOwner, tokenContractAddress, unlockTime, lockContractTokenCapacity,
+            dataHighwayPublicKey, isValidator, lockContractCreatedAt, lockContractDepositedLastAt, lockContractWithdrewLastAt);
     }
 
-    event Received(address from, uint256 amount, address tokenContractAddress);
-    // event Withdrew(address to, uint256 amount);
-    event WithdrewTokens(address tokenContractAddress, address to, uint256 amount);
+    event Created(address sender, uint256 unlockTime, address lockAddress, address tokenContractAddress, uint256 lockContractTokenCapacity, bytes dataHighwayPublicKey, bool isValidator, uint256 lockContractCreatedAt);
+    event DepositedTokens(address sender, uint256 unlockTime, address tokenContractAddress, uint256 lockContractTokenCapacity, uint256 lockContractBalance, bytes dataHighwayPublicKey, bool isValidator, uint256 lockContractDepositedLastAt);
+    event WithdrewTokens(address sender, uint256 unlockTime, address tokenContractAddress, uint256 lockContractWithdrewAmount, uint256 lockContractBalance, bytes dataHighwayPublicKey, bool isValidator, uint256 lockContractWithdrewLastAt);
 }
 
 /**
@@ -184,7 +212,7 @@ contract Lockdrop {
         uint256 unlockTime = unlockTimeForTerm(_term);
 
         // Create MXC lock contract
-        Lock _lockAddr = new Lock(lockdropCreator, _owner, unlockTime, _tokenERC20Amount, _tokenContractAddress);
+        Lock _lockAddr = new Lock(lockdropCreator, _owner, unlockTime, _tokenERC20Amount, _dataHighwayPublicKey, _tokenContractAddress, _isValidator);
 
         lockWalletStructs[_owner][_tokenContractAddress] = LockWalletStruct(
             {

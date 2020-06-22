@@ -133,15 +133,56 @@ npm run build
 ``` 
 (same as `truffle build`)
 
-### Run DApp Node.js Server
+### Run DApp Node.js Server & Interact
 
-Build App and Run Dev Server:
+#### Terminal 3 - Install & Run MongoDB
+
+##### macOS
+
+https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/
+
+```
+brew tap mongodb/brew
+brew install mongodb-community@4.2
+brew services start mongodb-community@4.2
+```
+
+#### Terminal 1 - Run Server
+
+Drop DB. Build App and Run Dev Server:
 
 ```bash
-npm run dev
+npm run drop; npm run dev
 ```
 
 Open `open http://localhost:8080` in browser
+
+#### Terminal 2 - Interact using cURL
+
+* Send request to server and receive response for authentication and authorisation to access specific API endpoints.
+	* Register. JWT provided in response (i.e. `{"token":"xyz"}`)
+		```
+		curl -v POST http://localhost:7000/users/auth/register -d "network=ethereum-testnet-local&publicAddress=0x123&email=ltfschoen@gmail.com&password=123456&name=Luke" -H "Content-Type: application/x-www-form-urlencoded"
+		curl -v POST http://localhost:7000/users/auth/register -d '{"network": "ethereum-testnet-local", "publicAddress": "0x123", "email":"ltfschoen@gmail.com", "password":"123456", "name":"Luke"}' -H "Content-Type: application/json"
+		```
+	* Fetch the Nonce if it exists for given Public Address. Nonce provided in response (i.e. `{"nonce":"123"}`)
+		```
+		curl -v GET http://localhost:7000/users/show?network='ethereum-testnet-local&publicAddress=0x123'
+		```
+	* Sign in using signature verification. JWT provided in response (i.e. `{"token":"xyz"}`)
+		```
+		curl -v POST http://localhost:7000/users/auth/login -d "network='ethereum-testnet-local'&publicAddress=0x123&signature=0x456&email=ltfschoen@gmail.com&password=123456" -H "Content-Type: application/x-www-form-urlencoded"
+		curl -v POST http://localhost:7000/users/auth/login -d '{"network": "ethereum-testnet-local", "publicAddress": "0x123", "signature": "0x456", "email":"ltfschoen@gmail.com", "password":"123456"}' -H "Content-Type: application/json"
+		```
+	* Access a restricted endpoint by providing JWT
+		```
+		curl -v GET http://localhost:7000/users/list -H "Content-Type: application/json" -H "Authorization: Bearer <INSERT_TOKEN>"
+		```
+	* Create user by providing JWT
+		```
+		curl -v POST http://localhost:7000/users/create --data '[{"network": "ethereum-testnet-local", "publicAddress": "0x123", "signature": "0x456", "email":"test@fake.com", "name":"Test"}]' -H "Content-Type: application/json" -H "Authorization: JWT <INSERT_TOKEN>"
+		curl -v POST http://localhost:7000/users/create -d "network='ethereum-testnet-local'&publicAddress=0x123&signature=0x456&email=test2@fake.com&name=Test2" -H "Content-Type: application/x-www-form-urlencoded" -H "Authorization: JWT <INSERT_TOKEN>"
+		```
 
 #### Example 2:
 
@@ -227,6 +268,9 @@ web3.eth.blockNumber
 * https://github.com/ethereum/wiki/wiki/JavaScript-API
 * https://www.ethereum.org/cli
 * https://github.com/ltfschoen/benzcoin
+* https://www.toptal.com/ethereum/one-click-login-flows-a-metamask-tutorial
+* https://mongoosejs.com/docs/populate.html
+* https://github.com/vanbexlabs/web3-auth
 
 ### FAQ
 

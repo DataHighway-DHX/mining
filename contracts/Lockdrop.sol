@@ -37,7 +37,7 @@ contract Lock {
         lockOwner = _owner;
         lockContractCreatedAt = now;
         tokenContractAddress = _tokenContractAddress;
-        ERC20 token = ERC20(_tokenContractAddress);
+        token = ERC20(_tokenContractAddress);
         lockAddress = address(this);
         unlockTime = _unlockTime;
         lockContractTokenCapacity = _tokenERC20Amount;

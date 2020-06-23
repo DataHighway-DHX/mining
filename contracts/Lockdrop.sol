@@ -371,26 +371,6 @@ contract Lockdrop {
         );
     }
 
-    // TODO - not required, can retrieve direct from mapping. See https://medium.com/coinmonks/solidity-tutorial-returning-structs-from-public-functions-e78e48efb378
-    // Retrieve lock wallet info for specific user address and token
-    // function getLockWalletInfo(address _user, address _tokenContractAddress)
-    //     public
-    //     view
-    //     returns(LockWalletStruct memory lockWalletStructs)
-    // {
-    //     return lockWalletStructs[_user][_tokenContractAddress];
-    // }
-
-    // TODO - not required, can retrieve direct from mapping
-    // Retrieve signal info for specific user address and token
-    // function getSignalWalletInfo(address _user, address _tokenContractAddress)
-    //     public
-    //     view
-    //     returns(SignalWalletStruct memory signalWalletStructs)
-    // {
-    //     return signalWalletStructs[_user][_tokenContractAddress];
-    // }
-
     /* Public Functions */
 
     /**

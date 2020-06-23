@@ -54,13 +54,9 @@ contract Lock {
 
     /* Fallback Function */
 
-    // FIXME - unable to use since generates error `Error: Returned error: VM Exception while processing transaction:
-    // revert Fallback function prevented accidental sending of Ether to the contract -- Reason given: Fallback
-    // function prevented accidental sending of Ether to the contract.`
-    // Fallback function prevent accidental sending of Ether to the contract
-    // function() external {
-    //     revert("Fallback function prevented accidental sending of Ether to the contract");
-    // }
+    function() external {
+        revert("Fallback function prevented accidental sending of Ether to the contract");
+    }
 
     /* Public Functions */
 
@@ -182,8 +178,6 @@ contract Lockdrop {
 
     // Map Lock owner to a mapping of tokenContractAddress and LockWalletStruct
     mapping(address => mapping(address => LockWalletStruct)) public lockWalletStructs;
-    // Retrieve list of all lock wallet user addresses
-    address[2][] public lockWallets;
 
     // Map Lock owner to a mapping of tokenContractAddress and SignalWalletStruct
     mapping(address => mapping(address => SignalWalletStruct)) public signalWalletStructs;
@@ -254,13 +248,9 @@ contract Lockdrop {
 
     /* Fallback Function */
 
-    // FIXME - unable to use since generates error `Error: Returned error: VM Exception while processing transaction:
-    // revert Fallback function prevented accidental sending of Ether to the contract -- Reason given: Fallback
-    // function prevented accidental sending of Ether to the contract.`
-    // Fallback function prevent accidental sending of Ether to the contract
-    // function() external {
-    //     revert("Fallback function prevented accidental sending of Ether to the contract");
-    // }
+    function() external {
+        revert("Fallback function prevented accidental sending of Ether to the contract");
+    }
 
     /* External Functions */
 
@@ -309,9 +299,6 @@ contract Lockdrop {
                 createdAt: now
             }
         );
-        // FIXME - this doesn't work
-        // // Add wallet to sender's wallets.
-        // lockWallets[_lockContractOwner][_tokenContractAddress].push(address(_lockAddr));
 
         emit Locked(
             msg.sender, _lockContractOwner, _term, _tokenERC20Amount, _dataHighwayPublicKey, _tokenContractAddress,

@@ -236,11 +236,8 @@ contract Lockdrop {
     }
 
     /* Constructor */
-    constructor() public {
-    // TODO - remove below for production
-    uint256 startTime = now;
-    // TODO - restore the below for production since we want to pass startTime into constructor
-    // constructor(uint startTime) public {
+
+    constructor(uint startTime) public {
         lockdropContractCreator = msg.sender;
         LOCK_START_TIME = startTime; // Unix epoch time
         LOCK_END_TIME = startTime + LOCK_DROP_PERIOD;

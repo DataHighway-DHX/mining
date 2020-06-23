@@ -421,6 +421,9 @@ contract Lockdrop {
     )
         public onlylockdropContractCreator
     {
+        ERC20 token = ERC20(_tokenContractAddress);
+        require(_approvedTokenERC20Amount <= token.totalSupply(), "Cannot approve more than the total supply of the token");
+
         // Lock
         if (_claimType == ClaimType.Lock) {
             require(lockWalletStructs[_user][_tokenContractAddress].tokenERC20Amount >= _approvedTokenERC20Amount,
@@ -436,25 +439,6 @@ contract Lockdrop {
         }
         emit ClaimStatusUpdated(
             _user, _claimType, _tokenContractAddress, _claimStatus, _approvedTokenERC20Amount, now
-        );
-    }
-
-    function resetApprovedTokenAmounts(
-        address _user, ClaimType _claimType, address _tokenContractAddress
-    )
-        public onlylockdropContractCreator
-    {
-        // Lock
-        if (_claimType == ClaimType.Lock) {
-            lockWalletStructs[_user][_tokenContractAddress].claimStatus = ClaimStatus.Pending;
-            lockWalletStructs[_user][_tokenContractAddress].approvedTokenERC20Amount = 0;
-        // Signal
-        } else if (_claimType == ClaimType.Signal) {
-            signalWalletStructs[_user][_tokenContractAddress].claimStatus = ClaimStatus.Pending;
-            signalWalletStructs[_user][_tokenContractAddress].approvedTokenERC20Amount = 0;
-        }
-        emit ClaimStatusUpdated(
-            _user, _claimType, _tokenContractAddress, ClaimStatus.Pending, 0, now
         );
     }
 

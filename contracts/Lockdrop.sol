@@ -150,12 +150,14 @@ contract Lockdrop {
     uint256 public LOCK_END_TIME;
 
     enum ClaimType { Lock, Signal }
-    enum ClaimStatus { Pending, Approved, Rejected }
+    enum ClaimStatus { Pending, Finalized }
     enum Term { ThreeMo, SixMo, NineMo, TwelveMo, TwentyFourMo, ThirtySixMo }
 
     struct LockWalletStruct {
         ClaimStatus claimStatus;
         uint256 approvedTokenERC20Amount;
+        uint256 pendingTokenERC20Amount;
+        uint256 rejectedTokenERC20Amount;
         Term term;
         uint256 tokenERC20Amount;
         bytes dataHighwayPublicKey;
@@ -168,6 +170,8 @@ contract Lockdrop {
     struct SignalWalletStruct {
         ClaimStatus claimStatus;
         uint256 approvedTokenERC20Amount;
+        uint256 pendingTokenERC20Amount;
+        uint256 rejectedTokenERC20Amount;
         Term term;
         uint256 tokenERC20Amount;
         bytes dataHighwayPublicKey;
@@ -193,7 +197,7 @@ contract Lockdrop {
     );
     event ClaimStatusUpdated(
         address user, ClaimType claimType, address tokenContractAddress, ClaimStatus claimStatus,
-        uint256 approvedTokenERC20Amount, uint time
+        uint256 approvedTokenERC20Amount, uint256 pendingTokenERC20Amount, uint256 rejectedTokenERC20Amount, uint time
     );
 
     /* Modifiers */
@@ -288,6 +292,8 @@ contract Lockdrop {
                 // Set pending as default
                 claimStatus: ClaimStatus.Pending,
                 approvedTokenERC20Amount: 0,
+                pendingTokenERC20Amount: _tokenERC20Amount,
+                rejectedTokenERC20Amount: 0,
                 term: _term,
                 tokenERC20Amount: _tokenERC20Amount,
                 dataHighwayPublicKey: _dataHighwayPublicKey,
@@ -322,6 +328,8 @@ contract Lockdrop {
             {
                 claimStatus: ClaimStatus.Pending,
                 approvedTokenERC20Amount: 0,
+                pendingTokenERC20Amount: _tokenERC20Amount,
+                rejectedTokenERC20Amount: 0,
                 term: _term,
                 tokenERC20Amount: _tokenERC20Amount,
                 dataHighwayPublicKey: _dataHighwayPublicKey,
@@ -356,6 +364,8 @@ contract Lockdrop {
             {
                 claimStatus: ClaimStatus.Pending,
                 approvedTokenERC20Amount: 0,
+                pendingTokenERC20Amount: _tokenERC20Amount,
+                rejectedTokenERC20Amount: 0,
                 term: _term,
                 tokenERC20Amount: _tokenERC20Amount,
                 dataHighwayPublicKey: _dataHighwayPublicKey,
@@ -381,28 +391,47 @@ contract Lockdrop {
      *              user may have already moved the funds that they locked or signaled.
      */
     function setClaimStatus(address _user, ClaimType _claimType, address _tokenContractAddress,
-        ClaimStatus _claimStatus, uint256 _approvedTokenERC20Amount
+        ClaimStatus _claimStatus, uint256 _approvedTokenERC20Amount, uint256 _pendingTokenERC20Amount, uint256 _rejectedTokenERC20Amount
     )
         public onlylockdropContractCreator
     {
         ERC20 token = ERC20(_tokenContractAddress);
         require(_approvedTokenERC20Amount <= token.totalSupply(), "Cannot approve more than the total supply of the token");
+        require(_pendingTokenERC20Amount <= token.totalSupply(), "Cannot be pending more than the total supply of the token");
+        require(_rejectedTokenERC20Amount <= token.totalSupply(), "Cannot reject more than the total supply of the token");
+
+        if (_claimStatus == ClaimStatus.Finalized) {
+            require(_pendingTokenERC20Amount == 0, "Cannot finalize with remaining pending amount");
+        }
 
         // Lock
         if (_claimType == ClaimType.Lock) {
-            require(lockWalletStructs[_user][_tokenContractAddress].tokenERC20Amount >= _approvedTokenERC20Amount,
-                "Cannot set approved amount for lock greater than user locked amount");
+            uint256 existingLocked = lockWalletStructs[_user][_tokenContractAddress].tokenERC20Amount;
+
+            require(lockWalletStructs[_user][_tokenContractAddress].claimStatus != ClaimStatus.Finalized, "Cannot set once finalized");
+            require(existingLocked == (_approvedTokenERC20Amount + _pendingTokenERC20Amount + _rejectedTokenERC20Amount),
+                "Combined approval, pending, and rejected amounts must match locked amount");
+
             lockWalletStructs[_user][_tokenContractAddress].claimStatus = _claimStatus;
             lockWalletStructs[_user][_tokenContractAddress].approvedTokenERC20Amount = _approvedTokenERC20Amount;
+            lockWalletStructs[_user][_tokenContractAddress].pendingTokenERC20Amount = _pendingTokenERC20Amount;
+            lockWalletStructs[_user][_tokenContractAddress].rejectedTokenERC20Amount = _rejectedTokenERC20Amount;
         // Signal
         } else if (_claimType == ClaimType.Signal) {
-            require(signalWalletStructs[_user][_tokenContractAddress].tokenERC20Amount >= _approvedTokenERC20Amount,
-                "Cannot set approved amount for signal greater than user signaled amount");
+            uint256 existingSignaled = signalWalletStructs[_user][_tokenContractAddress].tokenERC20Amount;
+
+            require(signalWalletStructs[_user][_tokenContractAddress].claimStatus != ClaimStatus.Finalized, "Cannot set once finalized");
+            require(existingSignaled == (_approvedTokenERC20Amount + _pendingTokenERC20Amount + _rejectedTokenERC20Amount),
+                "Combined approval, pending, and rejected amounts must match signaled amount");
+
             signalWalletStructs[_user][_tokenContractAddress].claimStatus = _claimStatus;
             signalWalletStructs[_user][_tokenContractAddress].approvedTokenERC20Amount = _approvedTokenERC20Amount;
+            signalWalletStructs[_user][_tokenContractAddress].pendingTokenERC20Amount = _pendingTokenERC20Amount;
+            signalWalletStructs[_user][_tokenContractAddress].rejectedTokenERC20Amount = _rejectedTokenERC20Amount;
         }
         emit ClaimStatusUpdated(
-            _user, _claimType, _tokenContractAddress, _claimStatus, _approvedTokenERC20Amount, now
+            _user, _claimType, _tokenContractAddress, _claimStatus, _approvedTokenERC20Amount,
+            _pendingTokenERC20Amount, _rejectedTokenERC20Amount, now
         );
     }
 

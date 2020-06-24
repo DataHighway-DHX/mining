@@ -22,6 +22,11 @@
 
 <!-- Note: Update the TOC by installing [markdown-toc](https://github.com/jonschlinkert/markdown-toc), and then running `cd mining && npm install -g markdown-toc && markdown-toc --bullets "*"  --no-firsth1 ./README.md` and replacing the current TOC with the output. -->
 
+## Credits
+
+* Original Source: https://github.com/hicommonwealth/edgeware-lockdrop
+* Key references: https://github.com/radek1st/time-locked-wallets/tree/master/contracts
+
 ## Setup
 
 ### Clone the repo
@@ -108,7 +113,7 @@ ganache-cli \
 ##### Migrate
 
 * Run Migrations Latest - `truffle migrate`
-* Run Migrations Full (Rinkeby) - `truffle migrate --reset --network rinkeby`
+* Run Migrations Full (Ropsten) - `truffle migrate --reset --network ropsten`
 * Run Migrations Full (Development) - `truffle migrate --reset --network development`
 * Run Contracts from specific Migration - `truffle migrate -f <number>`
 * Run Migration on specific network called 'live' defined in truffle.js - `truffle migrate --network live`

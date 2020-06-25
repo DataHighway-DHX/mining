@@ -18,6 +18,7 @@
   * [Test](#test)
   * [Linter](#linter)
 * [Truffle Interactive Console (REPL)](#truffle-interactive-console-repl)
+* [Remix](#remix)
 * [References](#references)
 
 <!-- Note: Update the TOC by installing [markdown-toc](https://github.com/jonschlinkert/markdown-toc), and then running `cd mining && npm install -g markdown-toc && markdown-toc --bullets "*"  --no-firsth1 ./README.md` and replacing the current TOC with the output. -->
@@ -264,6 +265,10 @@ i.e.
 
 web3.eth.blockNumber
 ```
+
+## Remix
+
+Refer to [Remix](./REMIX.md)
 
 ## References
 

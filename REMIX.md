@@ -68,7 +68,7 @@ In order provide the DataHighway Public Key as a parameter when interacting with
   * e.g. Mnemonic Passphrase: PLEASE ASK LUKE SCHOEN FOR THIS
 * Request Ropsten Testnet Ether from https://faucet.ropsten.be/, since you need to pay gas fees in Testnet Ether to make transactions (e.g. deploying and interacting with smart contracts).
 * Import Ethereum Account Address into Metamask and change your connection to the Ropsten Testnet
-* COPY the Ethereum Account Address and mnemonic into `ETHEREUM_ADDRESS` and `MNENOMIC` respectively of ./app/.env in the [DataHighway App](https://github.com/DataHighway-DHX/app)
+* COPY the Ethereum Account Address and mnemonic into `ETHEREUM_ADDRESS` and `MNEMONIC` respectively of ./app/.env in the [DataHighway App](https://github.com/DataHighway-DHX/app)
 
 ## Deploy "Lockdrop" Contract to Ropsten Testnet
 
@@ -275,7 +275,7 @@ The DataHighway App codebase is at https://github.com/DataHighway-DHX/app.
 * Create a .env file in the project root directory (which also contains the pubspec.yaml file)
 * Paste the following into the .env file:
   ```
-  MNENOMIC = <PLEASE ASK LUKE SCHOEN FOR THIS>
+  MNEMONIC = <PLEASE ASK LUKE SCHOEN FOR THIS>
   ETHEREUM_ADDRESS = 0xf0066Db8F8f2c86B2713f09090DDE33C558D03F0
   CONTRACT_ADDRESS_LOCKDROP_TESTNET = 0x712582a25d7b47628a52e372f3add72683bb9962
   CONTRACT_ADDRESS_MXC_TESTNET = 0x7d3037fa9f8f253e4e7fc930f0a299cbd6eac349

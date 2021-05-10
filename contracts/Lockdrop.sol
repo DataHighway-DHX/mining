@@ -11,6 +11,7 @@ contract Lock {
     address public lockdropContractCreator;
     address public lockContractAddress;
     address public lockOwner;
+    address public lockReturn;
     uint256 public lockContractTokenCapacity;
     ERC20 token;
     uint256 public lockContractTokenBalance;
@@ -30,12 +31,14 @@ contract Lock {
 
     /* Constructor */
     constructor (
-        address _lockdropContractCreator, address _lockContractOwner, uint256 _unlockTime,
+        address _lockdropContractCreator, address _lockContractOwner, 
+        address _lockReturn, uint256 _unlockTime,
         uint256 _tokenERC20Amount, bytes memory _dataHighwayPublicKey,
         address _tokenContractAddress, bool _isValidator
     ) public {
         lockdropContractCreator = _lockdropContractCreator;
         lockOwner = _lockContractOwner;
+        lockReturn = _lockReturn;
         lockContractCreatedAt = now;
         tokenContractAddress = _tokenContractAddress;
         token = ERC20(_tokenContractAddress);
@@ -46,9 +49,9 @@ contract Lock {
         isValidator = _isValidator;
 
         emit Created(
-            msg.sender, unlockTime, lockContractAddress, tokenContractAddress,
-            lockContractTokenCapacity, dataHighwayPublicKey, isValidator,
-            lockContractCreatedAt
+            msg.sender, unlockTime, lockContractAddress, lockReturn, 
+            tokenContractAddress, lockContractTokenCapacity, dataHighwayPublicKey, 
+            isValidator, lockContractCreatedAt
         );
     }
 
@@ -94,7 +97,8 @@ contract Lock {
         uint256 lockContractTokenBalanceExisting = token.balanceOf(address(this));
         require(lockContractTokenBalanceExisting > 0,
             "Lock address must have at least some ERC20 tokens to withdraw");
-        require(token.transfer(msg.sender, lockContractTokenBalance),
+            
+        require(token.transfer(lockReturn == address(0) ? msg.sender : lockReturn, lockContractTokenBalance),
             "Unable to withdraw ERC20 tokens from Lock contract");
         lockContractTokenBalance = token.balanceOf(address(this));
         require(lockContractTokenBalance == 0,
@@ -102,7 +106,7 @@ contract Lock {
         withdrewLastAt = now;
 
         emit WithdrewTokens(
-            msg.sender, unlockTime, tokenContractAddress, lockContractTokenBalance, lockContractTokenBalance,
+            msg.sender, unlockTime, tokenContractAddress, lockReturn, lockContractTokenBalance, lockContractTokenBalance,
             dataHighwayPublicKey, isValidator, withdrewLastAt
         );
     }
@@ -113,10 +117,10 @@ contract Lock {
      *             the Lock contract was created, and the timestamp of when the last deposit and withdrawal occured.
      */
     function info() public view returns(
-        address, address, address, address, uint256, uint256, bytes memory, bool, uint256, uint256, uint256
+        address, address, address, address, address, uint256, uint256, bytes memory, bool, uint256, uint256, uint256
     ) {
         return (
-            lockdropContractCreator, lockContractAddress, lockOwner, tokenContractAddress, unlockTime,
+            lockdropContractCreator, lockContractAddress, lockReturn, lockOwner, tokenContractAddress, unlockTime,
             lockContractTokenCapacity, dataHighwayPublicKey, isValidator, lockContractCreatedAt, depositedLastAt,
             withdrewLastAt
         );
@@ -124,16 +128,16 @@ contract Lock {
 
     /* Events */
     event Created(
-        address sender, uint256 unlockTime, address lockContractAddress, address tokenContractAddress,
-        uint256 lockContractTokenCapacity, bytes dataHighwayPublicKey, bool isValidator,
-        uint256 lockContractCreatedAt
+        address sender, uint256 unlockTime, address lockContractAddress, address lockReturnAddress, 
+        address tokenContractAddress, uint256 lockContractTokenCapacity, bytes dataHighwayPublicKey, 
+        bool isValidator, uint256 lockContractCreatedAt
     );
     event DepositedTokens(
         address sender, uint256 unlockTime, address tokenContractAddress, uint256 lockContractTokenCapacity,
         uint256 lockContractTokenBalance, bytes dataHighwayPublicKey, bool isValidator, uint256 depositedLastAt
     );
     event WithdrewTokens(
-        address sender, uint256 unlockTime, address tokenContractAddress, uint256 lockContractWithdrewAmount,
+        address sender, uint256 unlockTime, address tokenContractAddress, address tokenReturnAddress, uint256 lockContractWithdrewAmount,
         uint256 lockContractTokenBalance, bytes dataHighwayPublicKey, bool isValidator, uint256 withdrewLastAt
     );
 }
@@ -162,6 +166,7 @@ contract Lockdrop {
         uint256 tokenERC20Amount;
         bytes dataHighwayPublicKey;
         Lock lockAddr;
+        address returnAddr;
         bool isValidator;
         // TODO - replace all usage of `now` with type `uint48` since uses less memory
         uint256 createdAt;
@@ -176,6 +181,7 @@ contract Lockdrop {
         uint256 tokenERC20Amount;
         bytes dataHighwayPublicKey;
         address contractAddr; // Signal "Contract" claim type only
+        address returnAddr;
         uint32 nonce; // Signal "Contract" claim type only
         uint256 createdAt;
     }
@@ -189,11 +195,11 @@ contract Lockdrop {
     /* Events */
     event Locked(
         address indexed sender, address indexed owner, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey,
-        address tokenContractAddress, Lock lockAddr, bool isValidator, uint time
+        address tokenContractAddress, address returnAddr, Lock lockAddr, bool isValidator, uint time
     );
     event Signaled(
         address indexed sender, address indexed contractAddr, uint nonce, Term term, uint256 tokenERC20Amount,
-        bytes dataHighwayPublicKey, address tokenContractAddress, uint time
+        bytes dataHighwayPublicKey, address returnAddr, address tokenContractAddress, uint time
     );
     event ClaimStatusUpdated(
         address user, ClaimType claimType, address tokenContractAddress, ClaimStatus claimStatus,
@@ -266,7 +272,7 @@ contract Lockdrop {
      */
     function lock(
         address _lockContractOwner, Term _term, uint256 _tokenERC20Amount, bytes calldata _dataHighwayPublicKey,
-        address _tokenContractAddress, bool _isValidator
+        address _tokenContractAddress, address _returnAddress, bool _isValidator
     )
         external
         didStart
@@ -283,7 +289,7 @@ contract Lockdrop {
 
         // Create Lock contract
         Lock _lockAddr = new Lock(
-            lockdropContractCreator, _lockContractOwner, unlockTime, _tokenERC20Amount, _dataHighwayPublicKey,
+            lockdropContractCreator, _lockContractOwner, _returnAddress, unlockTime, _tokenERC20Amount, _dataHighwayPublicKey,
             _tokenContractAddress, _isValidator
         );
 
@@ -298,14 +304,15 @@ contract Lockdrop {
                 tokenERC20Amount: _tokenERC20Amount,
                 dataHighwayPublicKey: _dataHighwayPublicKey,
                 lockAddr: _lockAddr,
+                returnAddr: _returnAddress,
                 isValidator: _isValidator,
                 createdAt: now
             }
         );
 
         emit Locked(
-            msg.sender, _lockContractOwner, _term, _tokenERC20Amount, _dataHighwayPublicKey, _tokenContractAddress,
-            _lockAddr, _isValidator, now
+            msg.sender, _lockContractOwner, _term, _tokenERC20Amount, _dataHighwayPublicKey, _tokenContractAddress, 
+            _returnAddress, _lockAddr, _isValidator, now
         );
 
         return address(_lockAddr);
@@ -315,7 +322,7 @@ contract Lockdrop {
      * @dev        Signals an address's balance decided after lock period
      */
     function signal(
-        Term _term, uint256 _tokenERC20Amount, bytes calldata _dataHighwayPublicKey, address _tokenContractAddress
+        Term _term, uint256 _tokenERC20Amount, bytes calldata _dataHighwayPublicKey, address _tokenContractAddress, address _returnAddress
     )
         external
         didStart
@@ -334,6 +341,7 @@ contract Lockdrop {
                 tokenERC20Amount: _tokenERC20Amount,
                 dataHighwayPublicKey: _dataHighwayPublicKey,
                 contractAddr: fakeContractAddr,
+                returnAddr: _returnAddress,
                 nonce: fakeNonce,
                 createdAt: now
             }
@@ -341,7 +349,7 @@ contract Lockdrop {
 
         emit Signaled(
             msg.sender, fakeContractAddr, fakeNonce, _term, _tokenERC20Amount, _dataHighwayPublicKey,
-            _tokenContractAddress, now
+            _returnAddress, _tokenContractAddress, now
         );
     }
 
@@ -353,7 +361,7 @@ contract Lockdrop {
      */
     function signalFromContract(
         address _contractAddr, uint32 _nonce, Term _term, uint256 _tokenERC20Amount,
-        bytes calldata _dataHighwayPublicKey, address _tokenContractAddress
+        bytes calldata _dataHighwayPublicKey, address _tokenContractAddress, address _returnAddress
     )
         external
         didStart
@@ -371,13 +379,14 @@ contract Lockdrop {
                 dataHighwayPublicKey: _dataHighwayPublicKey,
                 contractAddr: _contractAddr,
                 nonce: _nonce,
-                createdAt: now
+                createdAt: now,
+                returnAddr: _returnAddress
             }
         );
 
         emit Signaled(
             msg.sender, _contractAddr, _nonce, _term, _tokenERC20Amount, _dataHighwayPublicKey,
-            _tokenContractAddress, now
+            _returnAddress, _tokenContractAddress, now
         );
     }
 

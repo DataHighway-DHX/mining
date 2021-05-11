@@ -49,7 +49,7 @@ contract Lock {
         isValidator = _isValidator;
 
         emit Created(
-            msg.sender, unlockTime, lockContractAddress, lockReturn, 
+            msg.sender, lockReturn, unlockTime, lockContractAddress, 
             tokenContractAddress, lockContractTokenCapacity, dataHighwayPublicKey, 
             isValidator, lockContractCreatedAt
         );
@@ -81,13 +81,13 @@ contract Lock {
         depositedLastAt = now;
 
         emit DepositedTokens(
-            msg.sender, unlockTime, tokenContractAddress, lockContractTokenCapacity,
+            msg.sender, lockReturn, unlockTime, tokenContractAddress, lockContractTokenCapacity,
             lockContractTokenBalance, dataHighwayPublicKey, isValidator, depositedLastAt
         );
     }
 
     /**
-     * @dev        Withdraw only tokens implementing ERC20 after unlock timestamp. Callable only by owner
+     * @dev        Withdraw only tokens implementing ERC20 after unlock timestamp. Callable only by owner.
      *             In development environment comment out the assertion that requires the current time to be
      *             the `unlockTime` or after it, or otherwise set the unlock time to match the time you
      *             created Lockdrop contract
@@ -106,7 +106,7 @@ contract Lock {
         withdrewLastAt = now;
 
         emit WithdrewTokens(
-            msg.sender, unlockTime, tokenContractAddress, lockReturn, lockContractTokenBalance, lockContractTokenBalance,
+            msg.sender, lockReturn, unlockTime, tokenContractAddress, lockContractTokenBalance, lockContractTokenBalance,
             dataHighwayPublicKey, isValidator, withdrewLastAt
         );
     }
@@ -128,16 +128,16 @@ contract Lock {
 
     /* Events */
     event Created(
-        address sender, uint256 unlockTime, address lockContractAddress, address lockReturnAddress, 
+        address sender, address lockReturnAddress, uint256 unlockTime, address lockContractAddress, 
         address tokenContractAddress, uint256 lockContractTokenCapacity, bytes dataHighwayPublicKey, 
         bool isValidator, uint256 lockContractCreatedAt
     );
     event DepositedTokens(
-        address sender, uint256 unlockTime, address tokenContractAddress, uint256 lockContractTokenCapacity,
+        address sender, address lockReturnAddress, uint256 unlockTime, address tokenContractAddress, uint256 lockContractTokenCapacity,
         uint256 lockContractTokenBalance, bytes dataHighwayPublicKey, bool isValidator, uint256 depositedLastAt
     );
     event WithdrewTokens(
-        address sender, uint256 unlockTime, address tokenContractAddress, address tokenReturnAddress, uint256 lockContractWithdrewAmount,
+        address sender, address lockReturnAddress, uint256 unlockTime, address tokenContractAddress, uint256 lockContractWithdrewAmount,
         uint256 lockContractTokenBalance, bytes dataHighwayPublicKey, bool isValidator, uint256 withdrewLastAt
     );
 }
@@ -162,11 +162,11 @@ contract Lockdrop {
         uint256 approvedTokenERC20Amount;
         uint256 pendingTokenERC20Amount;
         uint256 rejectedTokenERC20Amount;
+        address returnAddr;
         Term term;
         uint256 tokenERC20Amount;
         bytes dataHighwayPublicKey;
         Lock lockAddr;
-        address returnAddr;
         bool isValidator;
         // TODO - replace all usage of `now` with type `uint48` since uses less memory
         uint256 createdAt;
@@ -181,7 +181,6 @@ contract Lockdrop {
         uint256 tokenERC20Amount;
         bytes dataHighwayPublicKey;
         address contractAddr; // Signal "Contract" claim type only
-        address returnAddr;
         uint32 nonce; // Signal "Contract" claim type only
         uint256 createdAt;
     }
@@ -194,12 +193,12 @@ contract Lockdrop {
 
     /* Events */
     event Locked(
-        address indexed sender, address indexed owner, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey,
-        address tokenContractAddress, address returnAddr, Lock lockAddr, bool isValidator, uint time
+        address indexed sender, address indexed owner, address returnAddr, Term term, uint256 tokenERC20Amount, bytes dataHighwayPublicKey,
+        address tokenContractAddress, Lock lockAddr, bool isValidator, uint time
     );
     event Signaled(
         address indexed sender, address indexed contractAddr, uint nonce, Term term, uint256 tokenERC20Amount,
-        bytes dataHighwayPublicKey, address returnAddr, address tokenContractAddress, uint time
+        bytes dataHighwayPublicKey, address tokenContractAddress, uint time
     );
     event ClaimStatusUpdated(
         address user, ClaimType claimType, address tokenContractAddress, ClaimStatus claimStatus,
@@ -264,6 +263,7 @@ contract Lockdrop {
     /**
      * @dev        Locks up the value sent to contract in a new Lock
      * @param      _lockContractOwner Owner of a Lock contract (differs from the Lockdrop contract creator)
+     * @param      _returnAddress  The address to return the locked funds to at the unlock time at the end of the term.
      * @param      _term         The time period to lock ERC20 tokens in the Lock contract for. See unlockTimeForTerm.
      * @param      _dataHighwayPublicKey The bytes representation of the target DataHighway public key
      * @param      _tokenERC20Amount The ERC20 token amount to be locked. Check the ERC20 token's decimal places.
@@ -271,8 +271,8 @@ contract Lockdrop {
      * @param      _isValidator  Indicates if sender wishes to be a validator
      */
     function lock(
-        address _lockContractOwner, Term _term, uint256 _tokenERC20Amount, bytes calldata _dataHighwayPublicKey,
-        address _tokenContractAddress, address _returnAddress, bool _isValidator
+        address _lockContractOwner, address _returnAddress, Term _term, uint256 _tokenERC20Amount,
+        bytes calldata _dataHighwayPublicKey, address _tokenContractAddress, bool _isValidator
     )
         external
         didStart
@@ -300,19 +300,19 @@ contract Lockdrop {
                 approvedTokenERC20Amount: 0,
                 pendingTokenERC20Amount: _tokenERC20Amount,
                 rejectedTokenERC20Amount: 0,
+                returnAddr: _returnAddress,
                 term: _term,
                 tokenERC20Amount: _tokenERC20Amount,
                 dataHighwayPublicKey: _dataHighwayPublicKey,
                 lockAddr: _lockAddr,
-                returnAddr: _returnAddress,
                 isValidator: _isValidator,
                 createdAt: now
             }
         );
 
         emit Locked(
-            msg.sender, _lockContractOwner, _term, _tokenERC20Amount, _dataHighwayPublicKey, _tokenContractAddress, 
-            _returnAddress, _lockAddr, _isValidator, now
+            msg.sender, _lockContractOwner, _returnAddress, _term, _tokenERC20Amount, _dataHighwayPublicKey, _tokenContractAddress, 
+            _lockAddr, _isValidator, now
         );
 
         return address(_lockAddr);
@@ -322,7 +322,7 @@ contract Lockdrop {
      * @dev        Signals an address's balance decided after lock period
      */
     function signal(
-        Term _term, uint256 _tokenERC20Amount, bytes calldata _dataHighwayPublicKey, address _tokenContractAddress, address _returnAddress
+        Term _term, uint256 _tokenERC20Amount, bytes calldata _dataHighwayPublicKey, address _tokenContractAddress
     )
         external
         didStart
@@ -341,7 +341,6 @@ contract Lockdrop {
                 tokenERC20Amount: _tokenERC20Amount,
                 dataHighwayPublicKey: _dataHighwayPublicKey,
                 contractAddr: fakeContractAddr,
-                returnAddr: _returnAddress,
                 nonce: fakeNonce,
                 createdAt: now
             }
@@ -349,7 +348,7 @@ contract Lockdrop {
 
         emit Signaled(
             msg.sender, fakeContractAddr, fakeNonce, _term, _tokenERC20Amount, _dataHighwayPublicKey,
-            _returnAddress, _tokenContractAddress, now
+            _tokenContractAddress, now
         );
     }
 
@@ -358,10 +357,11 @@ contract Lockdrop {
      * @param      _contractAddr  The contract address from which to signal the balance
      * @param      _nonce         The transaction nonce of the creator of the contract
      * @param      _dataHighwayPublicKey   The bytes representation of the target DataHighway key
+     * @param      _tokenContractAddress   The contract address of ERC20 token to signal (e.g. MXCToken)
      */
     function signalFromContract(
         address _contractAddr, uint32 _nonce, Term _term, uint256 _tokenERC20Amount,
-        bytes calldata _dataHighwayPublicKey, address _tokenContractAddress, address _returnAddress
+        bytes calldata _dataHighwayPublicKey, address _tokenContractAddress
     )
         external
         didStart
@@ -379,14 +379,13 @@ contract Lockdrop {
                 dataHighwayPublicKey: _dataHighwayPublicKey,
                 contractAddr: _contractAddr,
                 nonce: _nonce,
-                createdAt: now,
-                returnAddr: _returnAddress
+                createdAt: now
             }
         );
 
         emit Signaled(
             msg.sender, _contractAddr, _nonce, _term, _tokenERC20Amount, _dataHighwayPublicKey,
-            _returnAddress, _tokenContractAddress, now
+            _tokenContractAddress, now
         );
     }
 
